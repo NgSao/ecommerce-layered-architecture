@@ -1,0 +1,19 @@
+Kiến trúc phân lớp (Layered Architecture)
+com/
+└── example/
+    └── demo/
+        ├── controller/
+        ├── service/
+        ├── repository/
+        ├── model/
+        ├── dto/
+        ├── config/
+        ├── exception/
+        ├── messaging/
+        │   ├── kafka/
+        │   └── rabbitmq/
+        ├── event/
+        │   ├── domain/        <- Event liên quan đến business (ví dụ: OrderCreatedEvent)
+        │   ├── listener/      <- Các event listener (dùng với @EventListener hoặc async)
+        │   └── publisher/     <- Các event publisher
+        └── DemoApplication.java
