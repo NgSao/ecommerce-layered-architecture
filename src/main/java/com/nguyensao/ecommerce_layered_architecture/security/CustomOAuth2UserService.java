@@ -132,7 +132,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 }
             }
             final String finalAvatarUrl = avatarUrl;
-            final ProviderEnum providerEnum = ProviderEnum.valueOf(registrationId);
             User user = userRepository.findByEmail(email)
                     .orElseGet(() -> {
                         User newUser = User.builder()
@@ -141,8 +140,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                                 .profileImageUrl(finalAvatarUrl)
                                 .password("")
                                 .role(RoleAuthorities.CUSTOMER)
-                                .provider(providerEnum)
-                                .status(StatusEnum.INACTIVE)
+                                .provider(ProviderEnum.valueOf(registrationId.toUpperCase()))
+                                .status(StatusEnum.ACTIVE)
                                 .lastLoginDate(Instant.now())
 
                                 .build();

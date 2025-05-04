@@ -11,4 +11,13 @@ public enum ProviderEnum {
     GOOGLE("Google");
 
     private final String providerName;
+
+    public static ProviderEnum fromString(String role) {
+        for (ProviderEnum r : ProviderEnum.values()) {
+            if (r.getProviderName().equalsIgnoreCase(role)) {
+                return r;
+            }
+        }
+        throw new IllegalArgumentException("Unknown role: " + role);
+    }
 }

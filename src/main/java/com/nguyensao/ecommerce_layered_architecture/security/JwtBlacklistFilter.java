@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.nguyensao.ecommerce_layered_architecture.dto.response.DataResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nguyensao.ecommerce_layered_architecture.constant.SecurityConstant;
 import com.nguyensao.ecommerce_layered_architecture.service.TokenBlacklistService;
 
@@ -20,11 +21,13 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
 
     private final TokenBlacklistService blacklistService;
     private final BearerTokenResolver tokenResolver;
+    private final ObjectMapper mapper;
 
     public JwtBlacklistFilter(TokenBlacklistService blacklistService,
-            BearerTokenResolver tokenResolver) {
+            BearerTokenResolver tokenResolver, ObjectMapper mapper) {
         this.blacklistService = blacklistService;
         this.tokenResolver = tokenResolver;
+        this.mapper = mapper;
     }
 
     @Override
@@ -39,6 +42,7 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
             DataResponse<Object> res = new DataResponse<>();
             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             res.setMessage(SecurityConstant.TOKEN_REVOKED);
+            response.getWriter().write(mapper.writeValueAsString(res));
             return;
         }
 

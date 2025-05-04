@@ -17,3 +17,22 @@ com/
         │   ├── listener/      <- Các event listener (dùng với @EventListener hoặc async)
         │   └── publisher/     <- Các event publisher
         └── DemoApplication.java
+
+
+
+# Kiểm tra .gitignore
+notepad .gitignore  # Đảm bảo có .env
+
+# Tạo .env (nếu cần)
+New-Item .env -ItemType File
+notepad .env  # Thêm biến, lưu và đóng
+
+# Tạo .env.example
+New-Item .env.example -ItemType File
+notepad .env.example  # Thêm nội dung mẫu, lưu và đóng
+
+# Thêm và commit
+git add .
+git status  # Đảm bảo .env không xuất hiện
+git commit -m "Add new features, .env.example, and update .gitignore"
+git push origin main

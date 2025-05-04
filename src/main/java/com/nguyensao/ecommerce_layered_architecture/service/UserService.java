@@ -1,39 +1,34 @@
 package com.nguyensao.ecommerce_layered_architecture.service;
 
+import java.io.IOException;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.dto.AddressDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.UserDto;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.OtpEvent;
+import com.nguyensao.ecommerce_layered_architecture.event.publisher.OtpEventPublisher;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.AddressCreateRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.AddressUpdateRequest;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.AdminRegisterRequest;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.EmailRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.request.OAuth2LinkRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.ResetPasswordRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.RoleChangeRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.StatusChangeRequest;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.UserLoginRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.request.UserUpdateRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.AuthRegisterRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.VerifyRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.response.UserCustomerResponse;
-import com.nguyensao.ecommerce_layered_architecture.dto.response.AuthLoginResponse;
 import com.nguyensao.ecommerce_layered_architecture.constant.UserConstant;
 import com.nguyensao.ecommerce_layered_architecture.enums.ProviderEnum;
 import com.nguyensao.ecommerce_layered_architecture.enums.RoleAuthorities;
@@ -42,11 +37,12 @@ import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.mapper.UserMapper;
 import com.nguyensao.ecommerce_layered_architecture.model.Address;
 import com.nguyensao.ecommerce_layered_architecture.model.Otp;
+import com.nguyensao.ecommerce_layered_architecture.model.Provider;
 import com.nguyensao.ecommerce_layered_architecture.model.User;
 import com.nguyensao.ecommerce_layered_architecture.repository.AddressRepository;
 import com.nguyensao.ecommerce_layered_architecture.repository.OtpRepository;
+import com.nguyensao.ecommerce_layered_architecture.repository.ProviderRepository;
 import com.nguyensao.ecommerce_layered_architecture.repository.UserRepository;
-import com.nguyensao.ecommerce_layered_architecture.utils.GenerateOTP;
 import com.nguyensao.ecommerce_layered_architecture.utils.GeneratePassword;
 import com.nguyensao.ecommerce_layered_architecture.utils.JwtUtil;
 import com.nguyensao.ecommerce_layered_architecture.utils.PasswordValidator;
@@ -59,111 +55,38 @@ public class UserService {
     private final AddressRepository addressRepository;
     private final OtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final JwtUtil jwtUtil;
-    private final KafkaTemplate<String, OtpEvent> kafkaTemplate;
     private final TokenBlacklistService tokenBlacklistService;
+    private final OtpEventPublisher otpEventPublisher;
+    private final ProviderRepository providerRepository;
+    private final FileService fileService;
 
     public UserService(UserMapper mapper, UserRepository userRepository, AddressRepository addressRepository,
             OtpRepository otpRepository,
-            PasswordEncoder passwordEncoder, AuthenticationManagerBuilder authenticationManagerBuilder,
+            PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            KafkaTemplate<String, OtpEvent> kafkaTemplate,
-            TokenBlacklistService tokenBlacklistService) {
+            TokenBlacklistService tokenBlacklistService,
+            OtpEventPublisher otpEventPublisher,
+            ProviderRepository providerRepository,
+            FileService fileService) {
         this.mapper = mapper;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
         this.otpRepository = otpRepository;
         this.passwordEncoder = passwordEncoder;
-        this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.jwtUtil = jwtUtil;
-        this.kafkaTemplate = kafkaTemplate;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.otpEventPublisher = otpEventPublisher;
+        this.providerRepository = providerRepository;
+        this.fileService = fileService;
 
     }
 
-    // Auth
-    @Scheduled(fixedRate = 180000)
-    public void deleteExpiredOtps() {
-        Instant now = Instant.now();
-        otpRepository.deleteAllByExpiresAtBefore(now);
-    }
-
-    public void registerUser(AuthRegisterRequest userDto) {
-        validateEmailRegister(userDto.getEmail());
-        if (!PasswordValidator.isStrongPassword(userDto.getPassword())) {
-            throw new AppException(UserConstant.PASSWORD_REQUIREMENTS_MESSAGE);
-        }
-        String verificationCode = GenerateOTP.generate();
-        User user = User.builder()
-                .fullName(userDto.getFullName())
-                .email(userDto.getEmail())
-                .password(passwordEncoder.encode(userDto.getPassword()))
-                .status(StatusEnum.INACTIVE)
-                .role(RoleAuthorities.CUSTOMER)
-                .provider(ProviderEnum.LOCAL)
-                .build();
-        userRepository.save(user);
-        Otp otp = Otp.builder()
-                .email(userDto.getEmail())
-                .otp(verificationCode)
-                .expiresAt(Instant.now().plus(UserConstant.EXPIRATION_OTP, ChronoUnit.SECONDS))
-                .build();
-        otpRepository.save(otp);
-
-        OtpEvent otpEvent = OtpEvent.builder()
-                .eventType(EventType.REGISTER_OTP)
-                .fullName(userDto.getFullName())
-                .email(userDto.getEmail())
-                .otp(verificationCode)
-                .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
-
-    }
-
-    public void verifyUser(VerifyRequest request) {
-        Otp otp = otpRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException(UserConstant.OTP_NOT_FOUND));
-
-        if (otp.getExpiresAt().isBefore(Instant.now())) {
-            throw new AppException(UserConstant.OTP_EXPIRED);
-        }
-
-        if (!otp.getOtp().equals(request.getOtp())) {
-            int newAttempts = otp.getAttempts() + 1;
-            otp.setAttempts(newAttempts);
-
-            if (newAttempts >= 3) {
-                otpRepository.delete(otp);
-                throw new AppException(UserConstant.OTP_RETRY_LIMIT_EXCEEDED);
-            }
-            otpRepository.save(otp);
-            throw new AppException(String.format(UserConstant.OTP_INVALID_REMAINING_ATTEMPTS, (3 - newAttempts)));
-        }
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
-        user.setStatus(StatusEnum.ACTIVE);
-        userRepository.save(user);
-        otpRepository.delete(otp);
-    }
-
-    public void sendOtp(EmailRequest request) {
-        User user = checkExistsEmail(request.getEmail());
-        String optVery = GenerateOTP.generate();
-        Otp otp = Otp.builder()
-                .email(request.getEmail())
-                .otp(optVery)
-                .expiresAt(Instant.now().plus(UserConstant.EXPIRATION_OTP, ChronoUnit.SECONDS))
-                .build();
-        otpRepository.save(otp);
-        OtpEvent otpEvent = OtpEvent.builder()
-                .eventType(EventType.VERIFY_OTP)
-                .fullName(user.getFullName())
-                .email(request.getEmail())
-                .otp(optVery)
-                .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
+    public String refreshToken(String token) {
+        String email = jwtUtil.decodedToken(token);
+        tokenBlacklistService.blacklist(token);
+        String refreshToken = jwtUtil.createRefreshToken(email);
+        return refreshToken;
     }
 
     public void forgotPassword(VerifyRequest request) {
@@ -195,7 +118,7 @@ public class UserService {
                 .email(request.getEmail())
                 .otp(newPassword)
                 .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
+        otpEventPublisher.publishOtpEvent(otpEvent);
     }
 
     public void validateEmailRegister(String email) {
@@ -257,44 +180,17 @@ public class UserService {
         return userRepository.findById(uuid).orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
     }
 
-    public AuthLoginResponse loginUser(UserLoginRequest request) {
-        User user = checkUserByEmail(request.getEmail());
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                request.getEmail(), request.getPassword());
-        Authentication authentication = authenticationManagerBuilder.getObject()
-                .authenticate(authenticationToken);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String access_token = jwtUtil.createAccessToken(request.getEmail());
-
-        AuthLoginResponse userLoginResponse = new AuthLoginResponse();
-        userLoginResponse.setAccessToken(access_token);
-        userLoginResponse.setEmail(request.getEmail());
-
-        user.setLastLoginDate(Instant.now());
-        userRepository.save(user);
-
-        return userLoginResponse;
-    }
-
-    public String refreshToken(String token) {
-        String email = jwtUtil.decodedToken(token);
-        String refreshToken = jwtUtil.createRefreshToken(email);
-        return refreshToken;
-    }
-
-    public void logOut(String token) {
-        tokenBlacklistService.blacklist(token);
-    }
-
     // Admin
-    public void createUser(AdminRegisterRequest request) {
+    public void createUser(AuthRegisterRequest request) {
         validateEmailRegister(request.getEmail());
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .status(StatusEnum.INACTIVE)
+                .status(StatusEnum.ACTIVE)
+                .provider(ProviderEnum.LOCAL)
+                .role(RoleAuthorities.STAFF)
                 .build();
         userRepository.save(user);
     }
@@ -304,7 +200,6 @@ public class UserService {
                 .orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
         user.setRole(request.getRoleAuthorities());
         userRepository.save(user);
-
     }
 
     public void changeStatus(StatusChangeRequest request) {
@@ -343,50 +238,21 @@ public class UserService {
         return mapper.toUserCustomerResponse(user);
     }
 
-    // public UserCustomerResponse updateAccount(MultipartFile file,
-    // UserUpdateRequest request) throws IOException {
-    // Jwt jwt = (Jwt)
-    // SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    // String token = jwt.getSubject();
-    // User user = checkUserByEmail(token);
-    // if (user == null) {
-    // throw new AppException(UserConstant.USER_NOT_FOUND);
-    // // }
-    // // String imageUrl = null;
-    // // if (file != null) {
-    // // GitHub github = GitHub.connectUsingOAuth(GithubConstant.GITHUB_TOKEN);
-    // // GHRepository repository = github.getRepository(GithubConstant.REPO_NAME);
-    // // String timestamp = String.valueOf(System.currentTimeMillis());
-    // // String imagePath = "microservice/users/" + timestamp + "_" +
-    // file.getOriginalFilename();
+    public UserCustomerResponse updateAccount(UserUpdateRequest request) {
+        Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String token = jwt.getSubject();
+        User user = checkUserByEmail(token);
+        if (user == null) {
+            throw new AppException(UserConstant.USER_NOT_FOUND);
+        }
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setBirthday(request.getBirthday());
+        user.setGender(request.getGender());
+        userRepository.save(user);
+        return mapper.toUserCustomerResponse(user);
 
-    // // if (!FileValidation.isValidImage(file)) {
-    // // throw new AppException("Chỉ chấp nhận file JPG, PNG, JPEG, GIF!");
-    // // }
-
-    // // repository.createContent()
-    // // .content(file.getBytes())
-    // // .path(imagePath)
-    // // .message("Tải ảnh người dùng: " + file.getOriginalFilename())
-    // // .branch(GithubConstant.BRANCH)
-    // // .commit();
-
-    // // imageUrl = "https://raw.githubusercontent.com/" + GithubConstant.REPO_NAME
-    // + "/" + GithubConstant.BRANCH
-    // // + "/" + imagePath;
-    // // }
-
-    // // user.setFullName(request.getFullName());
-    // // user.setPhone(request.getPhone());
-    // // user.setBirthday(request.getBirthday());
-    // // user.setGender(request.getGender());
-
-    // // if (imageUrl != null) {
-    // // user.setProfileImageUrl(imageUrl);
-    // // }
-    // // userRepository.save(user);
-    // // return mapper.toUserCustomerResponse(user);
-    // }
+    }
 
     public void resetPassword(ResetPasswordRequest request) {
         Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -419,11 +285,40 @@ public class UserService {
                 .email(email)
                 .otp(null)
                 .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
+        otpEventPublisher.publishOtpEvent(otpEvent);
 
     }
 
-    // 13
+    public void unlinkOAuth2Account(OAuth2LinkRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException("Không tìm thấy người dùng"));
+
+        Provider provider = providerRepository.findById(request.getId())
+                .orElseThrow(() -> new AppException("Không tìm thấy liên kết OAuth2"));
+
+        if (!provider.getUser().getId().equals(user.getId())) {
+            throw new AppException("Liên kết không thuộc người dùng này");
+        }
+        providerRepository.delete(provider);
+    }
+
+    public void updateAvatar(MultipartFile file) {
+        Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String email = jwt.getSubject();
+
+        User user = checkUserByEmail(email);
+        if (user == null) {
+            throw new AppException(UserConstant.USER_NOT_FOUND);
+        }
+
+        try {
+            String imageUrl = fileService.uploadImage(file);
+            user.setProfileImageUrl(imageUrl);
+            userRepository.save(user);
+        } catch (IOException e) {
+        }
+    }
+
     public AddressDto createAddress(AddressCreateRequest addressCreateRequest) {
         Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String uuid = jwt.getClaimAsString(UserConstant.UUID);

@@ -23,7 +23,6 @@ public class UserMapper {
                 .fullName(request.getFullName())
                 .password(request.getPhone())
                 .birthday(request.getBirthday())
-                .profileImageUrl(request.getProfileImageUrl())
                 .gender(request.getGender())
                 .build();
     }
@@ -32,6 +31,7 @@ public class UserMapper {
         return User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
+                .phone(request.getPhone())
                 .password(request.getPassword())
                 .build();
     }
@@ -113,7 +113,7 @@ public class UserMapper {
         if (dto == null)
             return null;
         return Address.builder()
-                .fullName(dto.getFullname())
+                .fullName(dto.getFullName())
                 .phone(dto.getPhone())
                 .city(dto.getCity())
                 .district(dto.getDistrict())

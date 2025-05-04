@@ -5,7 +5,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -24,6 +23,7 @@ import com.nguyensao.ecommerce_layered_architecture.enums.RoleAuthorities;
 import com.nguyensao.ecommerce_layered_architecture.enums.StatusEnum;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.OtpEvent;
+import com.nguyensao.ecommerce_layered_architecture.event.publisher.OtpEventPublisher;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.model.Otp;
 import com.nguyensao.ecommerce_layered_architecture.model.User;
@@ -41,23 +41,22 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final JwtUtil jwtUtil;
-    private final KafkaTemplate<String, OtpEvent> kafkaTemplate;
     private final TokenBlacklistService tokenBlacklistService;
+    private final OtpEventPublisher otpEventPublisher;
 
     public AuthService(UserRepository userRepository,
             OtpRepository otpRepository,
             PasswordEncoder passwordEncoder, AuthenticationManagerBuilder authenticationManagerBuilder,
             JwtUtil jwtUtil,
-            KafkaTemplate<String, OtpEvent> kafkaTemplate,
-            TokenBlacklistService tokenBlacklistService) {
+            TokenBlacklistService tokenBlacklistService,
+            OtpEventPublisher otpEventPublisher) {
         this.userRepository = userRepository;
         this.otpRepository = otpRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.jwtUtil = jwtUtil;
-        this.kafkaTemplate = kafkaTemplate;
         this.tokenBlacklistService = tokenBlacklistService;
-
+        this.otpEventPublisher = otpEventPublisher;
     }
 
     public void registerUser(AuthRegisterRequest request) {
@@ -89,8 +88,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .otp(verificationCode)
                 .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
-
+        otpEventPublisher.publishOtpEvent(otpEvent);
     }
 
     public void verifyUser(VerifyRequest request) {
@@ -135,7 +133,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .otp(optVery)
                 .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
+        otpEventPublisher.publishOtpEvent(otpEvent);
     }
 
     public void forgotPassword(VerifyRequest request) {
@@ -167,7 +165,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .otp(newPassword)
                 .build();
-        kafkaTemplate.send(UserConstant.KAFKA_EVENT, otpEvent);
+        otpEventPublisher.publishOtpEvent(otpEvent);
     }
 
     public void validateEmailRegister(String email) {

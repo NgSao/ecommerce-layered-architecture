@@ -75,11 +75,11 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
                 if (alreadyLinked) {
                     System.out.println(">>> Tài khoản đã được liên kết với " + provider);
-                    response.sendRedirect("/api/v1/users/linked-already");
+                    response.sendRedirect("/api/v1/public/oauth/linked-already");
                     return;
                 } else {
                     System.out.println(">>> Liên kết thành công với " + provider);
-                    response.sendRedirect("/api/v1/users/linked-success");
+                    response.sendRedirect("/api/v1/public/oauth/linked-success");
                     return;
                 }
             }
@@ -87,9 +87,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         System.out.println(">>> Tạo token cho email: " + email);
         try {
-            String accessToken = jwtUtil.decodedToken(email);
+            String accessToken = jwtUtil.createAccessToken(email);
             System.out.println(">>> Token được tạo: " + accessToken);
-            response.sendRedirect("/api/v1/users/success");
+            response.sendRedirect("/api/v1/public/oauth/success");
         } catch (Exception e) {
             System.err.println(">>> Lỗi khi tạo token: " + e.getMessage());
             throw new IllegalStateException("Lỗi khi tạo token: " + e.getMessage());

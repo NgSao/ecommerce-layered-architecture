@@ -21,7 +21,7 @@ public class AddressCreateRequest {
 
     @NotBlank(message = "Họ tên không được để trống")
     @Schema(description = "Họ tên người nhận", example = "Nguyễn Văn A")
-    String fullname;
+    String fullName;
 
     @NotBlank(message = "Số điện thoại không được để trống")
     @Pattern(regexp = "^(0[0-9]{9})$", message = "Số điện thoại không hợp lệ")

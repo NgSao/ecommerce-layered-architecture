@@ -69,4 +69,19 @@ public class AuthController {
         return ResponseEntity.ok().body(UserConstant.VERIFY_PASSWORD_RESET_SUCCESS);
     }
 
+    @GetMapping(ApiPathConstant.OAUTH2_SUCCESS)
+    public ResponseEntity<String> oauth2Success() {
+        return ResponseEntity.ok().body("Đăng nhập OAuth2 thành công!");
+    }
+
+    @GetMapping(ApiPathConstant.OAUTH2_LINKED_ALREADY)
+    public ResponseEntity<String> alreadyLinked() {
+        return ResponseEntity.ok().body("Tài khoản đã được liên kết trước đó!");
+    }
+
+    @GetMapping(ApiPathConstant.OAUTH2_LINKED_SUCCESS)
+    public ResponseEntity<String> linkedSuccess() {
+        return ResponseEntity.ok().body("Liên kết tài khoản thành công!");
+    }
+
 }

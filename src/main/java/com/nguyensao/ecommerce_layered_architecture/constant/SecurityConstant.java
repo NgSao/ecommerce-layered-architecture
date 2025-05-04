@@ -7,13 +7,13 @@ public class SecurityConstant {
     public static final long EXPIRATION_TIME = (24 * 60 * 60) * 2;
     public static final long REFRESH_TOKEN_EXP = (24 * 60 * 60) * 12;
     public static final String[] PUBLIC_URLS = {
-            "api/v1/public/**",
+            "/api/v1/public/**",
             "/v3/api-docs/**", "/swagger-ui/**",
             "/swagger-ui.html" };
     public static final String[] ADMIN_URLS = { "api/v1/admin/**" };
 
-    public static final String OAUTH2_AUTHORIZATION_URL = "/api/v1/public/oauth2/authorization";
-    public static final String OAUTH2_CALLBACK_URL = "/api/v1/public/oauth2/callback/**";
+    public static final String OAUTH2_AUTHORIZATION_URL = "/api/v1/oauth2/authorization";
+    public static final String OAUTH2_CALLBACK_URL = "/api/v1/oauth2/callback/**";
 
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
 

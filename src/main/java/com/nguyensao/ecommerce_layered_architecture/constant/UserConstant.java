@@ -30,9 +30,6 @@ public class UserConstant {
     // Register
     public static final String REGISTER_SUCCESS = "Đăng kí tài khoản thành công.";
 
-    // Kafka
-    public static final String KAFKA_EVENT = "otp-events";
-
     public static final String DELETE_NOT_USERS = "Không có người dùng nào để xóa.";
 
     // Address

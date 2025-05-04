@@ -21,7 +21,6 @@ import lombok.experimental.FieldDefaults;
 public class UserUpdateRequest {
     String fullName;
     String phone;
-    String profileImageUrl;
     Instant birthday;
     GenderEnum gender;
 }
