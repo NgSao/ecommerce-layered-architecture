@@ -1,15 +1,18 @@
 package com.nguyensao.ecommerce_layered_architecture.mapper;
 
+import java.math.BigDecimal;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.nguyensao.ecommerce_layered_architecture.constant.ProductConstant;
 import com.nguyensao.ecommerce_layered_architecture.dto.MediaDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.ProductDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.VariantDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.ProductImageRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.ProductRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.request.VariantCreateRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.VariantRequest;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.model.Brand;
@@ -19,6 +22,7 @@ import com.nguyensao.ecommerce_layered_architecture.model.Product;
 import com.nguyensao.ecommerce_layered_architecture.model.Variant;
 import com.nguyensao.ecommerce_layered_architecture.repository.BrandRepository;
 import com.nguyensao.ecommerce_layered_architecture.repository.CategoryRepository;
+import com.nguyensao.ecommerce_layered_architecture.repository.VariantRepository;
 import com.nguyensao.ecommerce_layered_architecture.utils.SkuUtil;
 import com.nguyensao.ecommerce_layered_architecture.utils.SlugUtil;
 
@@ -29,14 +33,17 @@ public class ProductMapper {
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
     private final BrandMapper brandMapper;
+    private final VariantRepository variantRepository;
 
     public ProductMapper(BrandRepository brandRepository, CategoryRepository categoryRepository,
             CategoryMapper categoryMapper,
-            BrandMapper brandMapper) {
+            BrandMapper brandMapper,
+            VariantRepository variantRepository) {
         this.brandRepository = brandRepository;
         this.categoryRepository = categoryRepository;
         this.categoryMapper = categoryMapper;
         this.brandMapper = brandMapper;
+        this.variantRepository = variantRepository;
     }
 
     public ProductDto productToDto(Product product) {
@@ -49,6 +56,7 @@ public class ProductMapper {
         dto.setSpecification(product.getSpecification());
         dto.setOriginalPrice(product.getOriginalPrice());
         dto.setSalePrice(product.getSalePrice());
+        dto.setPromotions(product.getPromotions());
         dto.setStock(product.getStock());
         dto.setSold(product.getSold());
         dto.setBrand(brandMapper.brandToDto(product.getBrand()));
@@ -89,9 +97,7 @@ public class ProductMapper {
 
     public Product productToEntity(ProductRequest request) {
         request.validatePrices();
-        if (request.getStock() != null && request.getStock() <= 0) {
-            throw new AppException("Số lượng tồn kho phải lớn hơn 0");
-        }
+
         Product product = new Product();
         product.setName(request.getName());
         product.setSku(SkuUtil.generateSku(request.getName()));
@@ -100,10 +106,20 @@ public class ProductMapper {
         product.setSpecification(request.getSpecification());
         product.setOriginalPrice(request.getOriginalPrice());
         product.setSalePrice(request.getSalePrice());
-        if (request.getStock() != null && request.getStock() <= 0) {
-            throw new AppException("Số lượng tồn kho phải lớn hơn 0");
+        product.setPromotions(request.getPromotions());
+        product.setStock(request.getStock() != null ? request.getStock() : 0);
+
+        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
+            product.setOriginalPrice(BigDecimal.ZERO);
+            product.setSalePrice(BigDecimal.ZERO);
+            product.setStock(request.getStock() != null ? request.getStock() : 0);
+
+        } else {
+            product.setOriginalPrice(request.getOriginalPrice());
+            product.setSalePrice(request.getSalePrice());
         }
-        product.setStock(request.getStock());
+
+        product.setStock(request.getStock() != null ? request.getStock() : 0);
         if (request.getBrandId() != null) {
             product.setBrand(brandToId(request.getBrandId()));
         }
@@ -125,13 +141,11 @@ public class ProductMapper {
     }
 
     public Product productUpdatedToEntity(Product product, ProductRequest request) {
-        if (request.getOriginalPrice() == null || request.getSalePrice() == null) {
+
+        if (request.getVariants() == null || request.getVariants().isEmpty()) {
             request.validatePrices();
         }
 
-        if (request.getStock() != null && request.getStock() <= 0) {
-            throw new AppException("Số lượng tồn kho phải lớn hơn 0");
-        }
         if (request.getName() != null) {
             product.setName(request.getName());
             product.setSku(SkuUtil.generateSku(request.getName()));
@@ -146,6 +160,10 @@ public class ProductMapper {
             product.setSpecification(request.getSpecification());
         }
 
+        if (request.getPromotions() != null) {
+            product.setPromotions(request.getPromotions());
+        }
+
         if (request.getOriginalPrice() != null) {
             product.setOriginalPrice(request.getOriginalPrice());
         }
@@ -153,6 +171,7 @@ public class ProductMapper {
         if (request.getSalePrice() != null) {
             product.setSalePrice(request.getSalePrice());
         }
+
         if (request.getStock() != null) {
             product.setStock(request.getStock());
         }
@@ -160,16 +179,24 @@ public class ProductMapper {
         if (request.getBrandId() != null) {
             product.setBrand(brandToId(request.getBrandId()));
         }
+
         if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
             product.setCategories(categoryToId(request.getCategoryId()));
         }
+
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             product.setImages(productImageToEntity(request.getImages(), product));
         }
+
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
-            product.setVariants(request.getVariants().stream()
-                    .map(variantRequest -> variantToEntity(variantRequest, product))
-                    .collect(Collectors.toSet()));
+            Set<Variant> updatedVariants = request.getVariants().stream()
+                    .map(variantRequest -> {
+                        Variant variant = variantRepository.findById(variantRequest.getId())
+                                .orElseThrow(() -> new AppException(ProductConstant.VARIANT_NOT_FOUND));
+                        return variantUpdatedToEntity(variant, variantRequest, product);
+                    })
+                    .collect(Collectors.toSet());
+            product.setVariants(updatedVariants);
         }
 
         return product;
@@ -200,6 +227,28 @@ public class ProductMapper {
     }
 
     public Variant variantToEntity(VariantRequest request, Product product) {
+        request.validatePrices();
+        if (request.getStock() != null && request.getStock() <= 0) {
+            throw new AppException("Số lượng tồn kho phải lớn hơn 0");
+        }
+        Variant variant = new Variant();
+        variant.setColor(request.getColor());
+        variant.setSize(request.getSize());
+        String variantIdentifier = request.getColor();
+        if (request.getSize() != null && !request.getSize().isEmpty()) {
+            variantIdentifier += "-" + request.getSize();
+        }
+        variant.setSlug(SlugUtil.toSlug(variantIdentifier));
+        variant.setSku(SkuUtil.generateSku(variantIdentifier));
+        variant.setOriginalPrice(request.getOriginalPrice());
+        variant.setSalePrice(request.getSalePrice());
+        variant.setStockQuantity(request.getStock());
+        variant.setDisplayOrder(request.getDisplayOrder());
+        variant.setProduct(product);
+        return variant;
+    }
+
+    public Variant variantToCreateEntity(VariantCreateRequest request, Product product) {
         request.validatePrices();
         if (request.getStock() != null && request.getStock() <= 0) {
             throw new AppException("Số lượng tồn kho phải lớn hơn 0");

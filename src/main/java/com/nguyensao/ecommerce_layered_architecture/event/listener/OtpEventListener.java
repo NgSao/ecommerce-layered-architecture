@@ -44,6 +44,8 @@ public class OtpEventListener {
                 emailService.sendPasswordResetConfirmation(event.getFullName(), event.getEmail());
                 notificationService.saveEventCustomer(userId, action, "Password reset confirmation sent");
                 break;
+            case CREATE_ORDER:
+                emailService.sendOrderConfirmation(event.getEmail(), event.getOrderDto());
             default:
                 break;
         }

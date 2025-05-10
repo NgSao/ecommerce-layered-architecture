@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.constant.ProductConstant;
+import com.nguyensao.ecommerce_layered_architecture.dto.CategoryAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.CategoryDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.CategoryRequest;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
@@ -13,6 +14,7 @@ import com.nguyensao.ecommerce_layered_architecture.repository.CategoryRepositor
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
@@ -39,9 +41,15 @@ public class CategoryService {
     }
 
     public List<CategoryDto> getAllCategories() {
-        return categoryRepository.findAll().stream()
+        return categoryRepository.findByParentIsNull().stream()
                 .map(categoryMapper::categoryToDto)
-                .toList();
+                .collect(Collectors.toList());
+    }
+
+    public List<CategoryAdminDto> getAllAdminCategories() {
+        return categoryRepository.findAll().stream()
+                .map(categoryMapper::categoryAdminToDto)
+                .collect(Collectors.toList());
     }
 
     public CategoryDto getCategory(Long id) {

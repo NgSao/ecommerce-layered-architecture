@@ -1,11 +1,17 @@
 package com.nguyensao.ecommerce_layered_architecture.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nguyensao.ecommerce_layered_architecture.constant.EmailConstant;
+import com.nguyensao.ecommerce_layered_architecture.dto.OrderDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.OrderItemDto;
+import com.nguyensao.ecommerce_layered_architecture.utils.CurrencyUtils;
 
 import jakarta.mail.internet.MimeMessage;
 
@@ -184,4 +190,181 @@ public class EmailService {
             throw new RuntimeException("Lỗi khi gửi email xác nhận đặt lại mật khẩu: " + e.getMessage());
         }
     }
+
+    public String sendOrderConfirmation(String email, OrderDto orderRequest) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            helper.setTo(email);
+            helper.setFrom("ecommershopapp@gmail.com");
+            helper.setTo(email);
+            helper.setSubject("Cảm ơn bạn đã đặt đơn hàng #" + orderRequest.getOrderCode());
+            StringBuilder orderDetailsHtml = new StringBuilder();
+            orderDetailsHtml.append("<h3 style='color: #d70018;'>THÔNG TIN SẢN PHẨM</h3>");
+            int totalQuantity = 0;
+            for (OrderItemDto detail : orderRequest.getItems()) {
+                int quantity = detail.getQuantity();
+                totalQuantity += quantity;
+                orderDetailsHtml.append(
+                        "<div class='order-item' style='display: flex; border-bottom: 1px solid #ccc; padding: 10px 0;'>")
+                        .append("<img src='")
+                        .append(detail.getImageUrl())
+                        .append("' alt='Sản phẩm' style='width: 100px; height: 100px; margin-right: 15px;'/>")
+                        .append("<div class='item-details' style='flex: 1;'>")
+                        .append("<p style='font-weight: bold;'>")
+                        .append(detail.getName())
+                        .append("</p>");
+
+                if (detail.getColor() != null && !detail.getColor().isEmpty()) {
+                    orderDetailsHtml.append("<p>Màu sắc: <span>")
+                            .append(detail.getColor())
+                            .append("</span></p>");
+                }
+
+                if (detail.getStorage() != null && !detail.getStorage().isEmpty()) {
+                    orderDetailsHtml.append("<p>Dung lượng: <span>")
+                            .append(detail.getStorage())
+                            .append("</span></p>");
+                }
+
+                // Số lượng và giá
+                orderDetailsHtml.append("<p>Số lượng: <span>")
+                        .append(detail.getQuantity())
+                        .append("</span></p>")
+                        .append("<p>Giá: <span>")
+                        .append(CurrencyUtils.formatAmount(detail.getPrice()))
+                        .append("</span></p>")
+                        .append("</div></div>");
+            }
+            LocalDate estimatedDeliveryDate = LocalDate.now().plusDays(3);
+            double shippingFee = orderRequest.getShipping().getFee();
+            String emailContent = "<html>" +
+                    "<head>" +
+                    "<style>" +
+                    "body { font-family: Arial, sans-serif; background-color: #f9f9f9; line-height: 1.6; margin: 0; padding: 20px; }"
+                    +
+                    ".header { background-color: #d70018; padding: 10px; text-align: center; }" +
+                    ".container { max-width: 800px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 20px; }"
+                    +
+                    ".order-info { margin-bottom: 20px; }" +
+                    ".order-title { display: flex; justify-content: space-between; align-items: center; }" +
+                    ".order-status { color: #198754; }" +
+                    ".order-date { margin: 10px 0; color: #555; }" +
+                    ".order-details { margin-top: 20px; }" +
+                    ".order-item { display: flex; border-bottom: 1px solid #ccc; padding: 10px 0; }" +
+                    ".product-image { width: 100px; height: 100px; margin-right: 15px; }" +
+                    ".item-details { flex: 1; }" +
+                    ".item-name { font-weight: bold; }" +
+                    ".order-footer { margin-top: 20px; }" +
+                    ".footer-item { display: flex; justify-content: space-between; padding: 5px 0; }" +
+                    ".total-order { color: #d70018; font-weight: bold; }" +
+                    ".fotterne { background-color: #d70018;  padding: 10px; }" +
+                    "</style>" +
+                    "</head>" +
+                    "<body>" +
+                    "<div style='max-width:800px;margin: auto;'>" +
+                    "<div class='header'>" +
+                    "<h1 style='color: #FFF'>MT <span style='color:#000'>Mobile</span></h1>" +
+                    "</div>" +
+                    "<div class='container'>" +
+                    "<p>Kính chào quý khách,<br>MT Mobile gửi đến quý khách hóa đơn điện tử cho đơn hàng " +
+                    orderRequest.getOrderCode() +
+                    ". Quý khách vui lòng kiểm tra hóa đơn VAT bằng cách xem và tải file theo thông tin chi tiết dưới đây.</p>";
+
+            emailContent += "<div style='margin-bottom: 30px;'>" +
+                    "<div style='border-bottom: 3px solid #d70018;'>" +
+                    "<h3 style='color: #d70018;'>THÔNG TIN KHÁCH HÀNG</h3>" +
+                    "</div>" +
+                    "<p>Người nhận: <span>" + orderRequest.getShipping().getFullName() + "</span></p>" +
+                    "<p>Số điện thoại: <span>" + orderRequest.getShipping().getPhone() + "</span></p>" +
+                    "<p>Email: <span>" + email + "</span></p>";
+            emailContent += "<p>Địa chỉ nhận hàng: <span>" + orderRequest.getShipping().getAddressDetail()
+                    + "</span></p>";
+
+            emailContent += "</div>";
+
+            emailContent += "<div class='order-info'>" +
+                    "<div style='border-bottom: 3px solid #d70018;''>" +
+                    "<h3 style='color: #d70018;'>THÔNG TIN ĐƠN HÀNG " + orderRequest.getOrderCode() + "</h3>" +
+                    "</div>" +
+                    "<div>" +
+                    "<div class='order-title'>" +
+                    "<p>Ngày đặt hàng: <span>" + LocalDate.now() + "</span></p>" +
+                    "<span class='order-status'>Chờ xác nhận</span>" +
+                    "</div>" +
+                    "<p>Phương thức thanh toán: <span>"
+                    + getVietnamesePaymentMethod(orderRequest.getPayment().getMethod()) + "</span></p>" +
+                    "<p>Trạng thái thanh toán: <span>" + orderRequest.getPayment().getStatus() + "</span></p>" +
+
+                    "<p class='estimated-delivery'>Dự kiến giao: <span>" + estimatedDeliveryDate + "</span></p>" +
+                    "</div>" +
+                    "<div class='order-details'>" +
+                    orderDetailsHtml.toString() +
+                    "</div>" +
+                    "<div class='order-footer'>" +
+                    "<div class='footer-item'>" +
+                    "<p>Tổng đơn hàng:</p>" +
+                    "<p>" + CurrencyUtils.formatAmount(orderRequest.getTotal()) + "</p>" +
+                    "</div>" +
+                    "<div class='footer-item'>" +
+                    "<p>Số lượng:</p>" +
+                    "<p>" + totalQuantity + "</p>" +
+                    "</div>" +
+                    "<div class='footer-item'>" +
+                    "<p>Phí vận chuyển:</p>" +
+                    "<p >" + CurrencyUtils.formatAmount((shippingFee)) + "</p>" +
+                    "</div>" +
+
+                    (orderRequest.getDiscount() > 0 ? "<div class='footer-item'>" +
+                            "<p>Giảm giá" +
+                            (orderRequest.getPromoCode() != null ? " (" + orderRequest.getPromoCode() + ")" : "") +
+                            ":</p>" +
+                            "<p>-" + CurrencyUtils.formatAmount(orderRequest.getDiscount()) + "</p>" +
+                            "</div>"
+                            : "")
+                    +
+
+                    "<div class='footer-item'>" +
+                    "<p>Tổng tiền đơn hàng:</p>" +
+                    "<p class='total-order'>" + CurrencyUtils.formatAmount(orderRequest.getTotal())
+                    + "</p>" +
+                    "</div>" +
+                    "</div>" +
+                    "</div>" +
+                    "<div style='text-align: center; margin-top: 40px'>" +
+                    "<p>Chúc bạn luôn có những trải nghiệm tuyệt vời khi mua sắm tại MT Mobile.</p>" +
+                    "<p>Tổng đài hỗ trợ miễn phí: <span style='color:#d70018;'>0392445255</span></p>" +
+                    "<p>MT Mobile cảm ơn quý khách.</p>" +
+                    "</div>" +
+                    "</div>" +
+                    " <div class='fotterne'></div>" +
+                    "</div>" +
+                    "</body>" +
+                    "</html>";
+
+            helper.setText(emailContent, true);
+
+            mailSender.send(message);
+            return "Email xác nhận đã được gửi thành công!";
+        } catch (Exception e) {
+            return "Có lỗi xảy ra: " + e.getMessage();
+        }
+    }
+
+    private String getVietnamesePaymentMethod(String method) {
+        if (method == null)
+            return "Không xác định";
+        switch (method) {
+            case "cod":
+                return "Thanh toán khi nhận hàng";
+            case "bank":
+                return "Chuyển khoản ngân hàng";
+            case "vnpay":
+                return "Thanh toán qua VNPAY";
+
+            default:
+                return "Khác";
+        }
+    }
+
 }

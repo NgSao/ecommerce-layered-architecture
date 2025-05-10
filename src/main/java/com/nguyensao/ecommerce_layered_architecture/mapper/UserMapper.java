@@ -1,6 +1,7 @@
 package com.nguyensao.ecommerce_layered_architecture.mapper;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -39,7 +40,15 @@ public class UserMapper {
     public UserCustomerResponse toUserCustomerResponse(User user) {
         if (user == null)
             return null;
+        Set<AddressDto> addressDtos = null;
+        if (user.getAddresses() != null) {
+            addressDtos = user.getAddresses().stream()
+                    .map(this::addressToDto) // hoặc bạn map thủ công
+                    .collect(Collectors.toSet());
+        }
+
         return UserCustomerResponse.builder()
+                .id(user.getId())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
@@ -47,8 +56,11 @@ public class UserMapper {
                 .birthday(user.getBirthday())
                 .role(user.getRole())
                 .status(user.getStatus())
+                .gender(user.getGender())
                 .lastLoginDate(user.getLastLoginDate())
                 .createdAt(user.getCreatedAt())
+                .addresses(addressDtos)
+
                 .build();
     }
 
@@ -130,8 +142,8 @@ public class UserMapper {
         Address address = new Address();
 
         address.setId(dto.getId());
-        if (dto.getFullname() != null)
-            address.setFullName(dto.getFullname());
+        if (dto.getFullName() != null)
+            address.setFullName(dto.getFullName());
         if (dto.getPhone() != null)
             address.setPhone(dto.getPhone());
         if (dto.getCity() != null)

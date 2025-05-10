@@ -4,22 +4,25 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.annotation.AppMessage;
+import com.nguyensao.ecommerce_layered_architecture.dto.AdminUserCreateDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.UserAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.UserDto;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.AuthRegisterRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.OAuth2LinkRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.ResetPasswordRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.RoleChangeRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.StatusChangeRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.UserUpdateRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.AdminUserDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.SimplifiedPageResponse;
 import com.nguyensao.ecommerce_layered_architecture.dto.response.UserCustomerResponse;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.constant.ApiPathConstant;
@@ -44,7 +47,7 @@ public class UserController {
 
         @AppMessage(AppMessageConstant.createUser)
         @PostMapping(ApiPathConstant.ADMIN_CREATE)
-        public ResponseEntity<String> createUser(@Valid @RequestBody AuthRegisterRequest request) {
+        public ResponseEntity<String> createUser(@RequestBody AdminUserCreateDto request) {
                 userService.createUser(request);
                 return ResponseEntity.ok().body(AppMessageConstant.createUser);
         }
@@ -56,21 +59,32 @@ public class UserController {
                 return ResponseEntity.ok().body(AppMessageConstant.changeRole);
         }
 
-        @AppMessage(AppMessageConstant.changeStatus)
         @PostMapping(ApiPathConstant.CHANGE_STATUS)
         public ResponseEntity<String> changeStatus(@Valid @RequestBody StatusChangeRequest request) {
                 userService.changeStatus(request);
                 return ResponseEntity.ok().body(AppMessageConstant.changeStatus);
         }
 
-        @AppMessage(AppMessageConstant.changeStatus)
         @GetMapping(ApiPathConstant.GET_ALL_USERS)
-        public ResponseEntity<Page<UserDto>> getAllUsers(
-                        @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "10") int size,
-                        @RequestParam(required = false) String keyword) {
-                Pageable pageable = PageRequest.of(page, size);
-                return ResponseEntity.ok().body(userService.getAllUsers(pageable, keyword));
+        public ResponseEntity<SimplifiedPageResponse<UserAdminDto>> getAllUsers(
+                        @RequestParam(defaultValue = "1") int page,
+                        @RequestParam(defaultValue = "10") int limit) {
+                Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("id"));
+                SimplifiedPageResponse<UserAdminDto> userPage = userService.getAllUsers(pageable);
+                return ResponseEntity.ok().body(userPage);
+        }
+
+        @GetMapping(ApiPathConstant.GET_USER_BY_ID)
+        public ResponseEntity<UserDto> getUserById(@PathVariable String id) {
+                UserDto user = userService.getUserById(id);
+                return ResponseEntity.ok().body(user);
+        }
+
+        @GetMapping(ApiPathConstant.GET_USER_ORDER)
+        public ResponseEntity<List<AdminUserDto>> getUserOrder(
+                        @RequestParam(value = "keyword", required = false) String keyword) {
+                List<AdminUserDto> userOrders = userService.getAllUsersOrder(keyword);
+                return ResponseEntity.ok().body(userOrders);
         }
 
         @AppMessage(AppMessageConstant.deleteUser)
@@ -87,7 +101,7 @@ public class UserController {
         }
 
         @PostMapping(ApiPathConstant.CUSTOMER_UPDATE)
-        public ResponseEntity<UserCustomerResponse> updateAccount(UserUpdateRequest request) {
+        public ResponseEntity<UserCustomerResponse> updateAccount(@RequestBody UserUpdateRequest request) {
                 return ResponseEntity.ok().body(userService.updateAccount(request));
         }
 

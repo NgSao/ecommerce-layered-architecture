@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.dto.AddressDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.AdminUserCreateDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.UserAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.UserDto;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.OtpEvent;
@@ -26,14 +29,16 @@ import com.nguyensao.ecommerce_layered_architecture.dto.request.ResetPasswordReq
 import com.nguyensao.ecommerce_layered_architecture.dto.request.RoleChangeRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.StatusChangeRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.UserUpdateRequest;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.AuthRegisterRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.VerifyRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.AdminUserDto;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.SimplifiedPageResponse;
 import com.nguyensao.ecommerce_layered_architecture.dto.response.UserCustomerResponse;
 import com.nguyensao.ecommerce_layered_architecture.constant.UserConstant;
 import com.nguyensao.ecommerce_layered_architecture.enums.ProviderEnum;
 import com.nguyensao.ecommerce_layered_architecture.enums.RoleAuthorities;
 import com.nguyensao.ecommerce_layered_architecture.enums.StatusEnum;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
+import com.nguyensao.ecommerce_layered_architecture.mapper.UserAdminMapper;
 import com.nguyensao.ecommerce_layered_architecture.mapper.UserMapper;
 import com.nguyensao.ecommerce_layered_architecture.model.Address;
 import com.nguyensao.ecommerce_layered_architecture.model.Otp;
@@ -60,6 +65,7 @@ public class UserService {
     private final OtpEventPublisher otpEventPublisher;
     private final ProviderRepository providerRepository;
     private final FileService fileService;
+    private final UserAdminMapper adminMapper;
 
     public UserService(UserMapper mapper, UserRepository userRepository, AddressRepository addressRepository,
             OtpRepository otpRepository,
@@ -68,7 +74,8 @@ public class UserService {
             TokenBlacklistService tokenBlacklistService,
             OtpEventPublisher otpEventPublisher,
             ProviderRepository providerRepository,
-            FileService fileService) {
+            FileService fileService,
+            UserAdminMapper adminMapper) {
         this.mapper = mapper;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
@@ -79,6 +86,7 @@ public class UserService {
         this.otpEventPublisher = otpEventPublisher;
         this.providerRepository = providerRepository;
         this.fileService = fileService;
+        this.adminMapper = adminMapper;
 
     }
 
@@ -181,41 +189,58 @@ public class UserService {
     }
 
     // Admin
-    public void createUser(AuthRegisterRequest request) {
+    public void createUser(AdminUserCreateDto request) {
         validateEmailRegister(request.getEmail());
-        User user = User.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail())
-                .phone(request.getPhone())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .status(StatusEnum.ACTIVE)
-                .provider(ProviderEnum.LOCAL)
-                .role(RoleAuthorities.STAFF)
-                .build();
+        User user = adminMapper.dtoAdminToUser(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setStatus(StatusEnum.ACTIVE);
+        user.setRole(RoleAuthorities.CUSTOMER);
+        user.setProvider(ProviderEnum.LOCAL);
         userRepository.save(user);
     }
 
     public void changeRole(RoleChangeRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findById(request.getId())
                 .orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
         user.setRole(request.getRoleAuthorities());
         userRepository.save(user);
     }
 
     public void changeStatus(StatusChangeRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findById(request.getId())
                 .orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
         user.setStatus(request.getStatus());
         userRepository.save(user);
     }
 
-    public Page<UserDto> getAllUsers(Pageable pageable, String keyword) {
-        if (keyword == null || keyword.isEmpty()) {
-            return userRepository.findAll(pageable)
-                    .map(mapper::userToDto);
+    public List<AdminUserDto> getAllUsersOrder(String keyword) {
+        List<User> users;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            users = userRepository.findAllByStatus(StatusEnum.ACTIVE);
+        } else {
+            users = userRepository.searchActiveUsersByKeyword(StatusEnum.ACTIVE, keyword);
         }
-        return userRepository.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(keyword, keyword, pageable)
-                .map(mapper::userToDto);
+        return users.stream()
+                .map(adminMapper::adminToDtoUser)
+                .collect(Collectors.toList());
+    }
+
+    public SimplifiedPageResponse<UserAdminDto> getAllUsers(Pageable pageable) {
+        Page<User> userPage = userRepository.findAll(pageable);
+        List<UserAdminDto> userDtoList = userPage.getContent().stream()
+                .map(adminMapper::userAdminToDto)
+                .collect(Collectors.toList());
+
+        Page<UserAdminDto> userDtoPage = new PageImpl<>(
+                userDtoList,
+                pageable,
+                userPage.getTotalElements());
+        return new SimplifiedPageResponse<>(userDtoPage);
+    }
+
+    public UserDto getUserById(String id) {
+        User user = userRepository.findById(id).orElseThrow(() -> new AppException(UserConstant.USER_NOT_FOUND));
+        return mapper.userToDto(user);
     }
 
     public void deleteUsers(List<String> userIds) {

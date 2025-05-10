@@ -13,7 +13,7 @@ public class SecurityConstant {
     public static final String[] ADMIN_URLS = { "api/v1/admin/**" };
 
     public static final String OAUTH2_AUTHORIZATION_URL = "/api/v1/oauth2/authorization";
-    public static final String OAUTH2_CALLBACK_URL = "/api/v1/oauth2/callback/**";
+    public static final String OAUTH2_CALLBACK_URL = "/api/v1/public/oauth2/callback/**";
 
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
 

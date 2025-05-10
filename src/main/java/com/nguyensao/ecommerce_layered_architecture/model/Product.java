@@ -36,11 +36,15 @@ public class Product extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     String specification;
 
+    @Column(columnDefinition = "TEXT")
+    String promotions;
+
     int stock;
 
     int sold;
 
-    int rating;
+    float rating;
+    int ratingCount;
 
     BigDecimal originalPrice;
 
@@ -59,4 +63,5 @@ public class Product extends BaseEntity {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     Set<Variant> variants = new HashSet<>();
+
 }

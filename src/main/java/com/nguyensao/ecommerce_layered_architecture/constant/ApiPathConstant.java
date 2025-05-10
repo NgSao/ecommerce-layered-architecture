@@ -15,7 +15,7 @@ public class ApiPathConstant {
     public static final String OAUTH2_LINKED_SUCCESS = "/public/oauth/linked-success";
     public static final String OAUTH2_UNLINK = "/oauth/unlinked";
 
-    public static final String LOGOUT = "/public/logout";
+    public static final String LOGOUT = "/auth/logout";
 
     // Admin
     public static final String REFRESH = "/admin/auth/refresh";
@@ -25,6 +25,8 @@ public class ApiPathConstant {
     public static final String CHANGE_STATUS = "/admin/users/active";
     public static final String GET_ALL_USERS = "/admin/users";
     public static final String DELETE_USERS = "/admin/users/delete";
+    public static final String GET_USER_BY_ID = "/admin/users/{id}";
+    public static final String GET_USER_ORDER = "/admin/users/orders";
 
     public static final String PRODUCT_CREATE = "/admin/products/create";
     public static final String PRODUCT_UPDATED = "/admin/products/updated/{id}";

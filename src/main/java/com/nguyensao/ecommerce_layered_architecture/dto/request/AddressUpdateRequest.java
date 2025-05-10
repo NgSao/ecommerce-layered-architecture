@@ -16,7 +16,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AddressUpdateRequest {
     String id;
-    String fullname;
+    String fullName;
     String phone;
     String city;
     String district;

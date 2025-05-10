@@ -12,15 +12,24 @@ import com.nguyensao.ecommerce_layered_architecture.dto.request.InventoryRequest
 import com.nguyensao.ecommerce_layered_architecture.event.domain.InventoryEvent;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.model.Inventory;
+import com.nguyensao.ecommerce_layered_architecture.model.Product;
+import com.nguyensao.ecommerce_layered_architecture.model.Variant;
 import com.nguyensao.ecommerce_layered_architecture.repository.InventoryRepository;
+import com.nguyensao.ecommerce_layered_architecture.repository.ProductRepository;
+import com.nguyensao.ecommerce_layered_architecture.repository.VariantRepository;
 
 @Service
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final VariantRepository variantRepository;
+    private final ProductRepository productRepository;
 
-    public InventoryService(InventoryRepository inventoryRepository) {
+    public InventoryService(InventoryRepository inventoryRepository, VariantRepository variantRepository,
+            ProductRepository productRepository) {
         this.inventoryRepository = inventoryRepository;
+        this.variantRepository = variantRepository;
+        this.productRepository = productRepository;
     }
 
     public void createInventory(InventoryEvent event) {
@@ -36,19 +45,18 @@ public class InventoryService {
     }
 
     public void updateInventory(InventoryEvent event) {
+
         if (event.getQuantity() == null || event.getQuantity() < 0) {
             throw new AppException(InventoryConstant.INVALID_STOCK_QUANTITY);
         }
-        Inventory inventory;
-        if (event.getSkuVariant() != null) {
-            inventory = inventoryRepository.findBySkuVariant(event.getSkuVariant())
-                    .orElseThrow(() -> new AppException(
-                            InventoryConstant.STOCK_NOT_FOUND_VARIANT + event.getSkuVariant()));
-        } else {
-            inventory = inventoryRepository.findBySkuProductAndSkuVariantIsNull(event.getSkuProduct())
-                    .orElseThrow(() -> new AppException(
-                            InventoryConstant.STOCK_NOT_FOUND_PRODUCT + event.getSkuProduct()));
-        }
+        Inventory inventory = (event.getSkuVariant() != null)
+                ? inventoryRepository.findBySkuVariant(event.getSkuVariant())
+                        .orElseThrow(() -> new AppException(
+                                InventoryConstant.STOCK_NOT_FOUND_VARIANT + event.getSkuVariant()))
+                : inventoryRepository.findBySkuProductAndSkuVariantIsNull(event.getSkuProduct())
+                        .orElseThrow(() -> new AppException(
+                                InventoryConstant.STOCK_NOT_FOUND_PRODUCT + event.getSkuProduct()));
+
         inventory.setQuantity(event.getQuantity());
         inventory.setLastUpdated(Instant.now());
         inventoryRepository.save(inventory);
@@ -68,21 +76,41 @@ public class InventoryService {
         }
     }
 
-    // Xử lý trừ tồn kho
     public void deductInventory(InventoryEvent event) {
+
         if (event.getQuantity() == null || event.getQuantity() < 0) {
             throw new AppException(InventoryConstant.INVALID_DEDUCT_STOCK_QUANTITY);
         }
+
         Inventory inventory;
+        Product product = null;
         if (event.getSkuVariant() != null) {
-            inventory = inventoryRepository.findBySkuVariant(event.getSkuVariant())
+            Variant variant = variantRepository.findByIdAndSize(
+                    Long.parseLong(event.getSkuProduct()),
+                    event.getSkuVariant())
                     .orElseThrow(() -> new AppException(
-                            InventoryConstant.STOCK_NOT_FOUND_VARIANT + event.getSkuVariant()));
+                            "Biến thể sản phẩm không tồn tại với id=" + event.getSkuProduct() +
+                                    " và size=" + event.getSkuVariant()));
+
+            inventory = inventoryRepository.findBySkuVariant(variant.getSku())
+                    .orElseThrow(
+                            () -> new AppException(InventoryConstant.STOCK_NOT_FOUND_VARIANT + event.getSkuVariant()));
         } else {
-            inventory = inventoryRepository.findBySkuProductAndSkuVariantIsNull(event.getSkuProduct())
+            long skuProduct = 0;
+            try {
+                skuProduct = Long.parseLong(event.getSkuProduct());
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+
+            product = productRepository.findById(skuProduct)
                     .orElseThrow(() -> new AppException(
                             InventoryConstant.STOCK_NOT_FOUND_PRODUCT + event.getSkuProduct()));
+            inventory = inventoryRepository.findBySkuProductAndSkuVariantIsNull(product.getSku())
+                    .orElseThrow(
+                            () -> new AppException(InventoryConstant.STOCK_NOT_FOUND_PRODUCT + event.getSkuProduct()));
         }
+
         int newQuantity = inventory.getQuantity() - event.getQuantity();
         if (newQuantity < 0) {
             throw new AppException(InventoryConstant.INSUFFICIENT_STOCK);
@@ -90,6 +118,7 @@ public class InventoryService {
         inventory.setQuantity(newQuantity);
         inventory.setLastUpdated(Instant.now());
         inventoryRepository.save(inventory);
+
     }
 
     public InventoryDto importInventory(InventoryRequest request) {

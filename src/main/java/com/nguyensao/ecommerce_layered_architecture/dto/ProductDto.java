@@ -24,6 +24,7 @@ public class ProductDto {
     String sku;
     String specification;
     String description;
+    String promotions;
     BigDecimal originalPrice;
     BigDecimal salePrice;
     Integer stock;

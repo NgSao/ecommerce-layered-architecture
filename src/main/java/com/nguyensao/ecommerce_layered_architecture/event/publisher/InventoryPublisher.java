@@ -17,12 +17,22 @@ public class InventoryPublisher {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void publishInventoryEvent(EventType eventType, String skuProduct, String skuVariant, Integer quantity) {
+    private void publishEvent(EventType eventType, String skuProduct, String skuVariant, Integer quantity) {
         InventoryEvent inventoryEvent = new InventoryEvent();
         inventoryEvent.setEventType(eventType);
         inventoryEvent.setSkuProduct(skuProduct);
         inventoryEvent.setSkuVariant(skuVariant);
         inventoryEvent.setQuantity(quantity);
         rabbitTemplate.convertAndSend(EXCHANGE, ROUTING_KEY, inventoryEvent);
+    }
+
+    // Phương thức để gửi sự kiện INVENTORY
+    public void publishInventoryEvent(EventType eventType, String skuProduct, String skuVariant, Integer quantity) {
+        publishEvent(eventType, skuProduct, skuVariant, quantity);
+    }
+
+    // Phương thức để gửi sự kiện PRODUCT
+    public void publishProductEvent(EventType eventType, String skuProduct, String skuVariant, Integer quantity) {
+        publishEvent(eventType, skuProduct, skuVariant, quantity);
     }
 }

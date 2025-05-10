@@ -2,6 +2,7 @@ package com.nguyensao.ecommerce_layered_architecture.mapper;
 
 import org.springframework.stereotype.Component;
 
+import com.nguyensao.ecommerce_layered_architecture.dto.BrandAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.BrandDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.BrandRequest;
 import com.nguyensao.ecommerce_layered_architecture.model.Brand;
@@ -17,6 +18,16 @@ public class BrandMapper {
         dto.setSlug(brand.getSlug());
         dto.setImageUrl(brand.getImageUrl());
         dto.setDisplayOrder(brand.getDisplayOrder());
+        return dto;
+    }
+
+    public BrandAdminDto AdminToDto(Brand brand) {
+        BrandAdminDto dto = new BrandAdminDto();
+        dto.setId(brand.getId());
+        dto.setName(brand.getName());
+        dto.setImage(brand.getImageUrl());
+        dto.setProductCount(brand.getProducts().size());
+
         return dto;
     }
 

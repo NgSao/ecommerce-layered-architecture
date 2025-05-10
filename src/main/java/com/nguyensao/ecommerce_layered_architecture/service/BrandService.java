@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.constant.ProductConstant;
+import com.nguyensao.ecommerce_layered_architecture.dto.BrandAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.BrandDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.BrandRequest;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
@@ -28,6 +29,12 @@ public class BrandService {
         this.fileService = fileService;
     }
 
+    public List<BrandAdminDto> getAllAdminBrands() {
+        return brandRepository.findAll().stream()
+                .map(mapper::AdminToDto)
+                .collect(Collectors.toList());
+    }
+
     public List<BrandDto> getAllBrands() {
         return brandRepository.findAll().stream()
                 .map(mapper::brandToDto)
@@ -35,7 +42,6 @@ public class BrandService {
     }
 
     public BrandDto getBrand(Long id) {
-
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new AppException(ProductConstant.BRAND_NOT_FOUND));
         return mapper.brandToDto(brand);

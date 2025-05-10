@@ -1,5 +1,6 @@
 package com.nguyensao.ecommerce_layered_architecture.event.domain;
 
+import com.nguyensao.ecommerce_layered_architecture.dto.OrderDto;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 
 import lombok.*;
@@ -16,5 +17,6 @@ public class OtpEvent {
     String fullName;
     String email;
     String otp;
+    OrderDto orderDto;
 
 }

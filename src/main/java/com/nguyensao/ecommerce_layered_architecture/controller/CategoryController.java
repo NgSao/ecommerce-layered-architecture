@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.constant.ApiPathConstant;
+import com.nguyensao.ecommerce_layered_architecture.dto.CategoryAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.CategoryDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.CategoryRequest;
 import com.nguyensao.ecommerce_layered_architecture.service.CategoryService;
@@ -27,6 +28,12 @@ public class CategoryController {
     @GetMapping(ApiPathConstant.CATEGORY_GET_ALL)
     public ResponseEntity<List<CategoryDto>> getAllCategories() {
         return ResponseEntity.ok().body(categoryService.getAllCategories());
+    }
+
+    // Category
+    @GetMapping("/admin/categories")
+    public ResponseEntity<List<CategoryAdminDto>> getAllAdminCategories() {
+        return ResponseEntity.ok().body(categoryService.getAllAdminCategories());
     }
 
     @GetMapping(ApiPathConstant.CATEGORY_GET_ID)

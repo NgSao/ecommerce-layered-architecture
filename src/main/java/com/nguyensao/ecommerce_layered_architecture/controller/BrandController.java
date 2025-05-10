@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nguyensao.ecommerce_layered_architecture.constant.ApiPathConstant;
+import com.nguyensao.ecommerce_layered_architecture.dto.BrandAdminDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.BrandDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.BrandRequest;
 import com.nguyensao.ecommerce_layered_architecture.service.BrandService;
@@ -21,6 +22,11 @@ public class BrandController {
     public BrandController(BrandService brandService) {
         this.brandService = brandService;
 
+    }
+
+    @GetMapping("/admin/brands")
+    public ResponseEntity<List<BrandAdminDto>> getAllAdminBrands() {
+        return ResponseEntity.ok().body(brandService.getAllAdminBrands());
     }
 
     @GetMapping(ApiPathConstant.BRAND_GET_ALL)
@@ -39,7 +45,7 @@ public class BrandController {
     }
 
     @PutMapping(ApiPathConstant.BRAND_UPDATED)
-    public ResponseEntity<BrandDto> updateBrand(@PathVariable Long id, BrandRequest request) {
+    public ResponseEntity<BrandDto> updateBrand(@PathVariable Long id, @RequestBody BrandRequest request) {
         return ResponseEntity.ok().body(brandService.updateBrand(id, request));
     }
 

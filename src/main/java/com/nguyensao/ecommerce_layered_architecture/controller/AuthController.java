@@ -42,7 +42,7 @@ public class AuthController {
         return ResponseEntity.ok().body(authService.loginUser(request));
     }
 
-    @GetMapping(ApiPathConstant.LOGOUT)
+    @PostMapping(ApiPathConstant.LOGOUT)
     public ResponseEntity<String> logout(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
         authService.logOut(token);
@@ -57,7 +57,7 @@ public class AuthController {
 
     @AppMessage(AppMessageConstant.sendOtp)
     @PostMapping(ApiPathConstant.AUTH_SEND_OTP)
-    public ResponseEntity<String> sendOtp(@Valid @RequestBody EmailRequest request) {
+    public ResponseEntity<String> sendOtp(@RequestBody EmailRequest request) {
         authService.sendOtp(request);
         return ResponseEntity.ok().body(UserConstant.VERIFY_CODE_SENT);
     }

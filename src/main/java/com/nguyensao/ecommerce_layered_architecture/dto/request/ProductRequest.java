@@ -22,6 +22,7 @@ public class ProductRequest {
     String name;
     String specification;
     String description;
+    String promotions;
 
     @NotNull(message = "Giá gốc không được để trống")
     @Positive(message = "Giá gốc phải lớn hơn 0")
@@ -33,7 +34,6 @@ public class ProductRequest {
 
     Long brandId;
 
-    @Positive(message = "Số lượng tồn kho phải lớn hơn 0")
     Integer stock;
 
     Set<Long> categoryId;

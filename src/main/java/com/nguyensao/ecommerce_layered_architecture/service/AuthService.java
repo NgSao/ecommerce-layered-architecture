@@ -213,9 +213,6 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(UserConstant.EMAIL_NOT_FOUND));
 
-        if (user.getStatus() == StatusEnum.ACTIVE) {
-            throw new AppException(UserConstant.ACCOUNT_ACTIVE);
-        }
         if (user.getStatus() == StatusEnum.BLOCKED) {
             throw new AppException(UserConstant.ACCOUNT_LOCKED);
         }

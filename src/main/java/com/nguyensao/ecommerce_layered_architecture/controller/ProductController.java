@@ -2,7 +2,11 @@ package com.nguyensao.ecommerce_layered_architecture.controller;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,7 +15,11 @@ import com.nguyensao.ecommerce_layered_architecture.constant.ApiPathConstant;
 import com.nguyensao.ecommerce_layered_architecture.dto.ProductDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.VariantDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.ProductRequest;
-import com.nguyensao.ecommerce_layered_architecture.dto.request.VariantRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.request.VariantCreateRequest;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.AdminProductResponse;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.ProductColorResponse;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.ProductResponse;
+import com.nguyensao.ecommerce_layered_architecture.dto.response.SimplifiedPageResponse;
 import com.nguyensao.ecommerce_layered_architecture.service.ProductService;
 
 @RestController
@@ -26,13 +34,49 @@ public class ProductController {
     }
 
     @GetMapping(ApiPathConstant.PRODUCT_GET_ALL)
-    public ResponseEntity<List<ProductDto>> getAllProducts() {
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
         return ResponseEntity.ok().body(productService.getAllProducts());
     }
 
+    @GetMapping("/public/products/hot")
+    public ResponseEntity<List<ProductResponse>> getAllProductshHot() {
+        return ResponseEntity.ok().body(productService.getAllProductsHot());
+    }
+
+    @GetMapping("/public/products/sale")
+    public ResponseEntity<List<ProductResponse>> getAllProductsSale() {
+        return ResponseEntity.ok().body(productService.getSaleProducts());
+    }
+
+    @GetMapping("/public/products/colors")
+    public ResponseEntity<SimplifiedPageResponse<ProductColorResponse>> getAllPageProducts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
+        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("id"));
+        SimplifiedPageResponse<ProductColorResponse> productPage = productService.getAllPageProducts(pageable);
+        return ResponseEntity.ok().body(productPage);
+    }
+
     @GetMapping(ApiPathConstant.PRODUCT_GET_ID)
-    public ResponseEntity<ProductDto> getProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
         return ResponseEntity.ok().body(productService.getProduct(id));
+    }
+
+    @GetMapping("/admin/products/{id}")
+    public ResponseEntity<ProductDto> getProductAdmin(@PathVariable Long id) {
+        return ResponseEntity.ok().body(productService.getProductAdmin(id));
+    }
+
+    @GetMapping("/public/products/search")
+    public ResponseEntity<List<ProductResponse>> searchProducts(
+            @RequestParam(value = "query", required = false) String query) {
+        List<ProductResponse> products = productService.searchProducts(query);
+        return ResponseEntity.ok().body(products);
+    }
+
+    @GetMapping("/public/products/categories/{id}")
+    public ResponseEntity<List<ProductResponse>> getProductCategory(@PathVariable Long id) {
+        return ResponseEntity.ok().body(productService.getProductsByCategoryId(id));
     }
 
     @PostMapping(ApiPathConstant.PRODUCT_CREATE)
@@ -52,14 +96,18 @@ public class ProductController {
     }
 
     @PostMapping(ApiPathConstant.VARIANT_CREATE)
-    public ResponseEntity<VariantDto> addVariant(@RequestBody VariantRequest request) {
-        return ResponseEntity.ok().body(productService.addVariant(request));
+    public ResponseEntity<List<VariantDto>> addVariants(@RequestBody List<VariantCreateRequest> requests) {
+        List<VariantDto> createdVariants = requests.stream()
+                .map(productService::addVariant)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok().body(createdVariants);
     }
 
-    @PutMapping(ApiPathConstant.VARIANT_UPDATED)
-    public ResponseEntity<VariantDto> updateVariant(@PathVariable Long id, @RequestBody VariantRequest request) {
-        return ResponseEntity.ok().body(productService.updateVariant(id, request));
-    }
+    // @PutMapping(ApiPathConstant.VARIANT_UPDATED)
+    // public ResponseEntity<VariantDto> updateVariant(@PathVariable Long id,
+    // @RequestBody VariantRequest request) {
+    // return ResponseEntity.ok().body(productService.updateVariant(id, request));
+    // }
 
     @DeleteMapping(ApiPathConstant.VARIANT_DELETE)
     public ResponseEntity<String> deleteVariant(@PathVariable Long id) {
@@ -78,6 +126,12 @@ public class ProductController {
     public VariantDto uploadVariantImage(
             @PathVariable Long variantId, @RequestParam("file") MultipartFile image) throws IOException {
         return productService.uploadVariantImage(variantId, image);
+    }
+
+    @GetMapping("/admin/products/orders")
+    public ResponseEntity<List<AdminProductResponse>> getAllProductsOrder(
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok().body(productService.getAllProductsOrder(keyword));
     }
 
 }
