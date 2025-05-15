@@ -34,31 +34,35 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping("/user/create-order")
+    @PostMapping(ApiPathConstant.CREATE_ORDER)
     public ResponseEntity<Order> createOrder(@RequestBody OrderDto orderDTO) {
-        Order order = orderService.createOrder(orderDTO);
-        return ResponseEntity.ok().body(order);
+        return ResponseEntity.ok().body(orderService.createOrder(orderDTO));
     }
 
-    @GetMapping("/user/my-orders")
+    @GetMapping(ApiPathConstant.MY_ORDERS)
     public ResponseEntity<List<Order>> getOrdersByToken() {
-        List<Order> orders = orderService.getOrdersByToken();
-        return ResponseEntity.ok().body(orders);
+        return ResponseEntity.ok().body(orderService.getOrdersByToken());
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping(ApiPathConstant.USER_ORDERS_BY_ID)
     public ResponseEntity<List<Order>> getOrdersByUserId(@PathVariable String userId) {
-        List<Order> orders = orderService.getOrdersByUserId(userId);
-        return ResponseEntity.ok().body(orders);
+        return ResponseEntity.ok().body(orderService.getOrdersByUserId(userId));
     }
 
-    @GetMapping("/user/orders/cancel/{id}")
+    @GetMapping(ApiPathConstant.CANCEL_ORDER)
     public ResponseEntity<String> cancelOrder(@PathVariable Long id) {
         orderService.cancelOrder(id);
         return ResponseEntity.ok("Order cancelled successfully");
     }
 
-    @GetMapping("/admin/orders")
+    @GetMapping(ApiPathConstant.GET_ORDER_BY_ID)
+    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+        Optional<Order> order = orderService.getOrderById(id);
+        return order.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping(ApiPathConstant.ORDER_GET)
     public ResponseEntity<SimplifiedPageResponse<Order>> getAllOrders(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit) {
@@ -67,26 +71,18 @@ public class OrderController {
         return ResponseEntity.ok(orderPage);
     }
 
-    @GetMapping("/user/orders/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
-        Optional<Order> order = orderService.getOrderById(id);
-        return order.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/admin/orders/status/{id}")
+    @PutMapping(ApiPathConstant.UPDATE_ORDER_STATUS)
     public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id,
             @RequestBody UpdateOrderStatusRequest request) {
-        Order updatedOrder = orderService.updateOrderStatus(id, request);
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, request));
     }
 
-    @GetMapping("/admin/orders/status-stats")
+    @GetMapping(ApiPathConstant.ORDER_STATUS_STATS)
     public ResponseEntity<OrderStatusStatsDto> getStatusStats() {
         return ResponseEntity.ok().body(orderService.getOrderStatusStats());
     }
 
-    @GetMapping("/admin/orders/revenue-stats")
+    @GetMapping(ApiPathConstant.REVENUE_STATS)
     public ResponseEntity<RevenueStatsDto> getRevenueStats(
             @RequestParam(value = "year", defaultValue = "0") int year) {
         if (year == 0) {

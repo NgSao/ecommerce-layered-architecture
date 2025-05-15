@@ -1,21 +1,32 @@
 package com.nguyensao.ecommerce_layered_architecture.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 import java.time.Instant;
 
 import com.nguyensao.ecommerce_layered_architecture.enums.NotificationEnum;
+import com.nguyensao.ecommerce_layered_architecture.enums.RoleAuthorities;
 
-@Data
 @Entity
 @Table(name = "notifications")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    private Long flagId;
+
+    private String userId;
 
     @Enumerated(EnumType.STRING)
     private NotificationEnum type;
@@ -30,6 +41,9 @@ public class Notification {
     @Column(name = "`read`")
     private boolean read;
 
-    @Column(columnDefinition = "TEXT")
     private String data;
+
+    private boolean active;
+
+    private RoleAuthorities role;
 }

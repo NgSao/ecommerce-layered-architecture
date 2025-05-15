@@ -24,7 +24,7 @@ public class BrandController {
 
     }
 
-    @GetMapping("/admin/brands")
+    @GetMapping(ApiPathConstant.BRAND_GET)
     public ResponseEntity<List<BrandAdminDto>> getAllAdminBrands() {
         return ResponseEntity.ok().body(brandService.getAllAdminBrands());
     }

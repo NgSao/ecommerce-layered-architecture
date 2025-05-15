@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nguyensao.ecommerce_layered_architecture.constant.PaymentGatewayConstant;
 import com.nguyensao.ecommerce_layered_architecture.dto.OrderDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.VNPayCallbackRequest;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.VNPayRequestDto;
@@ -29,10 +30,15 @@ public class VNPayController {
         this.orderService = orderService;
     }
 
+    // private final String vnp_TmnCode = "JGV9MSIF";
+    // private final String vnp_HashSecret = "E9QLQ1W7KCLQKQLE5522R5JNRR7WIV8I";
+    // private final String vnp_PayUrl =
+    // "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    // private final String vnp_ReturnUrl =
+    // "http://localhost:8080/api/v1/public/vnpay/callback";
+
     @PostMapping("/payment")
     public ResponseEntity<Map<String, String>> createPayment(@RequestBody VNPayRequestDto request) throws Exception {
-        System.out.println("Amount: " + request.getAmount());
-        System.out.println("Order ID: " + request.getOrderId());
         if (request.getAmount() == null || request.getOrderId() == null || request.getOrderId().isBlank()) {
             Map<String, String> error = new HashMap<>();
             error.put("message", "amount và orderId không được để trống");
@@ -42,14 +48,14 @@ public class VNPayController {
         Map<String, String> vnp_Params = new HashMap<>();
         vnp_Params.put("vnp_Version", "2.1.0");
         vnp_Params.put("vnp_Command", "pay");
-        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-        vnp_Params.put("vnp_Amount", String.valueOf((long) (request.getAmount() * 100))); // VNPay yêu cầu amount * 100
+        vnp_Params.put("vnp_TmnCode", PaymentGatewayConstant.VNPAY_TMNCODE);
+        vnp_Params.put("vnp_Amount", String.valueOf((long) (request.getAmount() * 100)));
         vnp_Params.put("vnp_CurrCode", "VND");
         vnp_Params.put("vnp_TxnRef", request.getOrderId());
         vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang " + request.getOrderId());
         vnp_Params.put("vnp_OrderType", "250000");
         vnp_Params.put("vnp_Locale", "vn");
-        vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
+        vnp_Params.put("vnp_ReturnUrl", PaymentGatewayConstant.VNPAY_RETURN_URL);
         vnp_Params.put("vnp_IpAddr", request.getIpAddr() != null ? request.getIpAddr() : "127.0.0.1");
         vnp_Params.put("vnp_CreateDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
 
@@ -61,7 +67,7 @@ public class VNPayController {
                     .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)).append("&");
         }
         hashData.deleteCharAt(hashData.length() - 1);
-        String vnp_SecureHash = hmacSHA512(vnp_HashSecret, hashData.toString());
+        String vnp_SecureHash = hmacSHA512(PaymentGatewayConstant.VNPAY_SECRET_KEY, hashData.toString());
         vnp_Params.put("vnp_SecureHash", vnp_SecureHash);
 
         // Tạo URL thanh toán
@@ -71,7 +77,7 @@ public class VNPayController {
                     .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)).append("&");
         }
         query.deleteCharAt(query.length() - 1);
-        String paymentUrl = vnp_PayUrl + "?" + query;
+        String paymentUrl = PaymentGatewayConstant.VNPAY_PAYMENT_URL + "?" + query;
 
         Map<String, String> response = new HashMap<>();
         response.put("paymentUrl", paymentUrl);
@@ -94,7 +100,7 @@ public class VNPayController {
                     .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)).append("&");
         }
         hashData.deleteCharAt(hashData.length() - 1);
-        String calculatedHash = hmacSHA512(vnp_HashSecret, hashData.toString());
+        String calculatedHash = hmacSHA512(PaymentGatewayConstant.VNPAY_SECRET_KEY, hashData.toString());
 
         Map<String, String> response = new HashMap<>();
         if (calculatedHash.equalsIgnoreCase(vnp_SecureHash)) {
@@ -135,130 +141,5 @@ public class VNPayController {
         }
         return hexString.toString();
     }
+
 }
-
-// package com.nguyensao.ecommerce_layered_architecture.controller;
-
-// import org.springframework.http.HttpStatus;
-// import org.springframework.http.ResponseEntity;
-// import org.springframework.web.bind.annotation.GetMapping;
-// import org.springframework.web.bind.annotation.PostMapping;
-// import org.springframework.web.bind.annotation.RequestBody;
-// import org.springframework.web.bind.annotation.RequestMapping;
-// import org.springframework.web.bind.annotation.RequestParam;
-// import org.springframework.web.bind.annotation.RestController;
-
-// import com.nguyensao.ecommerce_layered_architecture.config.VnpayConfig;
-// import com.nguyensao.ecommerce_layered_architecture.dto.OrderDto;
-// import
-// com.nguyensao.ecommerce_layered_architecture.dto.request.PaymentRequest;
-// import com.nguyensao.ecommerce_layered_architecture.service.OrderService;
-
-// import java.io.UnsupportedEncodingException;
-// import java.net.URLEncoder;
-// import java.nio.charset.StandardCharsets;
-// import java.text.SimpleDateFormat;
-// import java.util.*;
-
-// @RestController
-// @RequestMapping("/api/v1/public")
-// public class PaymentController {
-
-// private OrderService orderService;
-
-// public PaymentController(OrderService orderService) {
-// this.orderService = orderService;
-// }
-
-// private final String vnp_ReturnUrl =
-// "http://localhost:8080/api/v1/public/vnpay/callback";
-
-// @PostMapping("/vnpay/payment")
-// public String createPayment(@RequestBody PaymentRequest paymentRequest)
-// throws UnsupportedEncodingException {
-
-// String vnp_Version = "2.1.0";
-// String vnp_Command = "pay";
-// String orderType = "other";
-
-// long amount = 0;
-// try {
-// amount = Long.parseLong(paymentRequest.getAmount()) * 100;
-// } catch (NumberFormatException e) {
-// throw new IllegalArgumentException("Số tiền không hợp lệ");
-// }
-
-// String bankCode = "NCB";
-// String vnp_TxnRef = VnpayConfig.getRandomNumber(8);
-// String vnp_IpAddr = "127.0.0.1";
-// String vnp_TmnCode = VnpayConfig.vnp_TmnCode;
-
-// Map<String, String> vnp_Params = new HashMap<>();
-// vnp_Params.put("vnp_Version", vnp_Version);
-// vnp_Params.put("vnp_Command", vnp_Command);
-// vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-// vnp_Params.put("vnp_Amount", String.valueOf(amount));
-// vnp_Params.put("vnp_CurrCode", "VND");
-
-// vnp_Params.put("vnp_BankCode", bankCode);
-// vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-// vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang:" + vnp_TxnRef);
-// vnp_Params.put("vnp_OrderType", orderType);
-// vnp_Params.put("vnp_Locale", "vn");
-// vnp_Params.put("vnp_ReturnUrl", VnpayConfig.vnp_ReturnUrl);
-// vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
-
-// Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
-// SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-// String vnp_CreateDate = formatter.format(cld.getTime());
-// vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
-
-// cld.add(Calendar.MINUTE, 15);
-// String vnp_ExpireDate = formatter.format(cld.getTime());
-// vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
-
-// List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-// Collections.sort(fieldNames);
-// StringBuilder hashData = new StringBuilder();
-// StringBuilder query = new StringBuilder();
-// Iterator<String> itr = fieldNames.iterator();
-// while (itr.hasNext()) {
-// String fieldName = itr.next();
-// String fieldValue = vnp_Params.get(fieldName);
-// if ((fieldValue != null) && (fieldValue.length() > 0)) {
-// hashData.append(fieldName).append('=')
-// .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-// query.append(URLEncoder.encode(fieldName,
-// StandardCharsets.US_ASCII.toString()))
-// .append('=')
-// .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-// if (itr.hasNext()) {
-// query.append('&');
-// hashData.append('&');
-// }
-// }
-// }
-
-// String queryUrl = query.toString();
-// String vnp_SecureHash = VnpayConfig.hmacSHA512(VnpayConfig.secretKey,
-// hashData.toString());
-// queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
-// String paymentUrl = VnpayConfig.vnp_PayUrl + "?" + queryUrl;
-
-// return paymentUrl;
-// }
-
-// @GetMapping("/vnpay/callback")
-// public ResponseEntity<String> returnPayment(@RequestParam("vnp_ResponseCode")
-// String responseCode,
-// @RequestBody OrderDto orderDTO) {
-// if ("00".equals(responseCode)) {
-// orderService.createOrderFromVNPay(orderDTO);
-// return ResponseEntity.ok().body("Thanh toán thành công!");
-// } else {
-// return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Thanh toán thất
-// bại! Mã lỗi: " + responseCode);
-// }
-// }
-
-// }

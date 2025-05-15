@@ -1,7 +1,7 @@
 package com.nguyensao.ecommerce_layered_architecture.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Random;
 
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.nguyensao.ecommerce_layered_architecture.constant.EmailConstant;
 import com.nguyensao.ecommerce_layered_architecture.dto.OrderDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.OrderItemDto;
+import com.nguyensao.ecommerce_layered_architecture.enums.OrderStatus;
 import com.nguyensao.ecommerce_layered_architecture.utils.CurrencyUtils;
 
 import jakarta.mail.internet.MimeMessage;
@@ -191,14 +192,33 @@ public class EmailService {
         }
     }
 
-    public String sendOrderConfirmation(String email, OrderDto orderRequest) {
+    @Async
+    public void sendOrderConfirmation(String email, OrderStatus orderStatus, OrderDto orderRequest, Boolean flag) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
             helper.setTo(email);
             helper.setFrom("ecommershopapp@gmail.com");
-            helper.setTo(email);
-            helper.setSubject("Cảm ơn bạn đã đặt đơn hàng #" + orderRequest.getOrderCode());
+            String subject;
+            switch (orderStatus) {
+                case PENDING:
+                    subject = "Cảm ơn bạn đã đặt đơn hàng #" + orderRequest.getOrderCode();
+                    break;
+                case CONFIRMED:
+                    subject = "Chúng tôi đã xác nhận đơn hàng của bạn. Cảm ơn bạn đã tin tưởng Minh Tuấn Mobile!";
+                    break;
+                case CANCELLED:
+                    if (flag) {
+                        subject = "Đơn hàng #" + orderRequest.getOrderCode() + " đã bị hủy bởi cửa hàng.";
+                    } else {
+                        subject = "Đơn hàng #" + orderRequest.getOrderCode() + " đã bị hủy bởi bạn.";
+                    }
+                    break;
+                default:
+                    subject = "Cập nhật đơn hàng #" + orderRequest.getOrderCode();
+                    break;
+            }
+            helper.setSubject(subject);
             StringBuilder orderDetailsHtml = new StringBuilder();
             orderDetailsHtml.append("<h3 style='color: #d70018;'>THÔNG TIN SẢN PHẨM</h3>");
             int totalQuantity = 0;
@@ -248,7 +268,7 @@ public class EmailService {
                     +
                     ".order-info { margin-bottom: 20px; }" +
                     ".order-title { display: flex; justify-content: space-between; align-items: center; }" +
-                    ".order-status { color: #198754; }" +
+                    ".order-status { color: #198754; margin-left: 40px; }" +
                     ".order-date { margin: 10px 0; color: #555; }" +
                     ".order-details { margin-top: 20px; }" +
                     ".order-item { display: flex; border-bottom: 1px solid #ccc; padding: 10px 0; }" +
@@ -264,10 +284,10 @@ public class EmailService {
                     "<body>" +
                     "<div style='max-width:800px;margin: auto;'>" +
                     "<div class='header'>" +
-                    "<h1 style='color: #FFF'>MT <span style='color:#000'>Mobile</span></h1>" +
+                    "<h1 style='color: #FFF'>SN <span style='color:#000'>Mobile</span></h1>" +
                     "</div>" +
                     "<div class='container'>" +
-                    "<p>Kính chào quý khách,<br>MT Mobile gửi đến quý khách hóa đơn điện tử cho đơn hàng " +
+                    "<p>Kính chào quý khách,<br>SN Mobile gửi đến quý khách hóa đơn điện tử cho đơn hàng " +
                     orderRequest.getOrderCode() +
                     ". Quý khách vui lòng kiểm tra hóa đơn VAT bằng cách xem và tải file theo thông tin chi tiết dưới đây.</p>";
 
@@ -284,17 +304,18 @@ public class EmailService {
             emailContent += "</div>";
 
             emailContent += "<div class='order-info'>" +
-                    "<div style='border-bottom: 3px solid #d70018;''>" +
+                    "<div style='border-bottom: 3px solid #d70018;'>" +
                     "<h3 style='color: #d70018;'>THÔNG TIN ĐƠN HÀNG " + orderRequest.getOrderCode() + "</h3>" +
                     "</div>" +
                     "<div>" +
                     "<div class='order-title'>" +
                     "<p>Ngày đặt hàng: <span>" + LocalDate.now() + "</span></p>" +
-                    "<span class='order-status'>Chờ xác nhận</span>" +
+                    "<p class='order-status'>" + getVietnameseOrderStatus(orderStatus) + "</p>" +
                     "</div>" +
                     "<p>Phương thức thanh toán: <span>"
                     + getVietnamesePaymentMethod(orderRequest.getPayment().getMethod()) + "</span></p>" +
                     "<p>Trạng thái thanh toán: <span>" + orderRequest.getPayment().getStatus() + "</span></p>" +
+                    "<p>Phương thức vận chuyển: <span>" + orderRequest.getShipping().getMethod() + "</span></p>" +
 
                     "<p class='estimated-delivery'>Dự kiến giao: <span>" + estimatedDeliveryDate + "</span></p>" +
                     "</div>" +
@@ -314,7 +335,6 @@ public class EmailService {
                     "<p>Phí vận chuyển:</p>" +
                     "<p >" + CurrencyUtils.formatAmount((shippingFee)) + "</p>" +
                     "</div>" +
-
                     (orderRequest.getDiscount() > 0 ? "<div class='footer-item'>" +
                             "<p>Giảm giá" +
                             (orderRequest.getPromoCode() != null ? " (" + orderRequest.getPromoCode() + ")" : "") +
@@ -323,7 +343,6 @@ public class EmailService {
                             "</div>"
                             : "")
                     +
-
                     "<div class='footer-item'>" +
                     "<p>Tổng tiền đơn hàng:</p>" +
                     "<p class='total-order'>" + CurrencyUtils.formatAmount(orderRequest.getTotal())
@@ -332,9 +351,9 @@ public class EmailService {
                     "</div>" +
                     "</div>" +
                     "<div style='text-align: center; margin-top: 40px'>" +
-                    "<p>Chúc bạn luôn có những trải nghiệm tuyệt vời khi mua sắm tại MT Mobile.</p>" +
+                    "<p>Chúc bạn luôn có những trải nghiệm tuyệt vời khi mua sắm tại SN Mobile.</p>" +
                     "<p>Tổng đài hỗ trợ miễn phí: <span style='color:#d70018;'>0392445255</span></p>" +
-                    "<p>MT Mobile cảm ơn quý khách.</p>" +
+                    "<p>SN Mobile cảm ơn quý khách.</p>" +
                     "</div>" +
                     "</div>" +
                     " <div class='fotterne'></div>" +
@@ -343,11 +362,107 @@ public class EmailService {
                     "</html>";
 
             helper.setText(emailContent, true);
-
             mailSender.send(message);
-            return "Email xác nhận đã được gửi thành công!";
         } catch (Exception e) {
-            return "Có lỗi xảy ra: " + e.getMessage();
+        }
+    }
+
+    @Async
+    public void sendShippingUpdate(String email, OrderStatus orderStatus, OrderDto orderRequest) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            helper.setTo(email);
+            helper.setFrom("ecommershopapp@gmail.com");
+            String subject;
+            switch (orderStatus) {
+                case SHIPPED:
+                    subject = "Đơn hàng #" + orderRequest.getOrderCode() + " đang được giao.";
+                    break;
+                case DELIVERED:
+                    subject = "Đơn hàng #" + orderRequest.getOrderCode() + " đã giao thành công.";
+                    break;
+                default:
+                    subject = "Cập nhật đơn hàng #" + orderRequest.getOrderCode();
+                    break;
+            }
+            helper.setSubject(subject);
+            int totalQuantity = 0;
+            for (OrderItemDto detail : orderRequest.getItems()) {
+                totalQuantity += detail.getQuantity();
+            }
+
+            String trackingNumber = generateRandomTrackingNumber();
+            LocalDate estimatedDeliveryDate = LocalDate.now().plusDays(3);
+            String emailContent = "<html>" +
+                    "<head>" +
+                    "<style>" +
+                    "body { font-family: Arial, sans-serif; background-color: #f9f9f9; line-height: 1.6; margin: 0; padding: 20px; }"
+                    +
+                    ".header { background-color: #d70018; padding: 10px; text-align: center; }" +
+                    ".container { max-width: 800px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 20px; }"
+                    +
+                    ".order-info { margin-bottom: 20px; }" +
+                    ".order-title { display: flex; justify-content: space-between; align-items: center; }" +
+                    ".order-status { color: #198754; margin-left: 40px; }" +
+                    ".shipping-details { margin-top: 20px; }" +
+                    ".order-footer { margin-top: 20px; }" +
+                    ".footer-item { display: flex; justify-content: space-between; padding: 5px 0; }" +
+                    ".total-order { color: #d70018; font-weight: bold; }" +
+                    ".fotterne { background-color: #d70018; padding: 10px; }" +
+                    "</style>" +
+                    "</head>" +
+                    "<body>" +
+                    "<div style='max-width:800px;margin: auto;'>" +
+                    "<div class='header'>" +
+                    "<h1 style='color: #FFF'>MT <span style='color:#000'>Mobile</span></h1>" +
+                    "</div>" +
+                    "<div class='container'>" +
+                    "<p>Kính chào quý khách,<br>MT Mobile thông báo cập nhật trạng thái vận chuyển cho đơn hàng " +
+                    orderRequest.getOrderCode() + ".</p>" +
+                    "<div style='margin-bottom: 30px;'>" +
+                    "<div style='border-bottom: 3px solid #d70018;'>" +
+                    "<h3 style='color: #d70018;'>THÔNG TIN VẬN CHUYỂN</h3>" +
+                    "</div>" +
+                    "<p>Trạng thái: <span>" + getVietnameseOrderStatus(orderStatus) + "</span></p>" +
+                    "<p>Đơn vị vận chuyển: <span>" + orderRequest.getShipping().getMethod() + "</span></p>" +
+                    "<p>Mã vận đơn: <span>" + trackingNumber + "</span></p>" +
+                    "<p>Dự kiến giao hàng: <span>" + estimatedDeliveryDate + "</span></p>" +
+                    "<p>Địa chỉ nhận hàng: <span>" + orderRequest.getShipping().getAddressDetail() + "</span></p>" +
+                    "</div>" +
+                    "<div style='margin-bottom: 30px;'>" +
+                    "<div style='border-bottom: 3px solid #d70018;'>" +
+                    "<h3 style='color: #d70018;'>THÔNG TIN KHÁCH HÀNG</h3>" +
+                    "</div>" +
+                    "<p>Người nhận: <span>" + orderRequest.getShipping().getFullName() + "</span></p>" +
+                    "<p>Số điện thoại: <span>" + orderRequest.getShipping().getPhone() + "</span></p>" +
+                    "<p>Email: <span>" + email + "</span></p>" +
+                    "</div>" +
+                    "<div class='order-footer'>" +
+                    "<div class='footer-item'>" +
+                    "<p>Số lượng:</p>" +
+                    "<p>" + totalQuantity + "</p>" +
+                    "</div>" +
+                    "<div class='footer-item'>" +
+                    "<p>Tổng tiền đơn hàng:</p>" +
+                    "<p class='total-order'>" + CurrencyUtils.formatAmount(orderRequest.getTotal()) + "</p>" +
+                    "</div>" +
+                    "</div>" +
+                    "<div style='text-align: center; margin-top: 40px'>" +
+                    "<p>Để theo dõi trạng thái vận chuyển, quý khách vui lòng sử dụng mã vận đơn trên hệ thống của " +
+                    orderRequest.getShipping().getMethod() + ".</p>" +
+                    "<p>Chúc bạn luôn có những trải nghiệm tuyệt vời khi mua sắm tại MT Mobile.</p>" +
+                    "<p>Tổng đài hỗ trợ miễn phí: <span style='color:#d70018;'>0392445255</span></p>" +
+                    "<p>MT Mobile cảm ơn quý khách.</p>" +
+                    "</div>" +
+                    "</div>" +
+                    "<div class='fotterne'></div>" +
+                    "</div>" +
+                    "</body>" +
+                    "</html>";
+            helper.setText(emailContent, true);
+            mailSender.send(message);
+        } catch (Exception e) {
         }
     }
 
@@ -365,6 +480,32 @@ public class EmailService {
             default:
                 return "Khác";
         }
+    }
+
+    private String getVietnameseOrderStatus(OrderStatus status) {
+        if (status == null) {
+            return "Không xác định";
+        }
+        switch (status) {
+            case PENDING:
+                return "Đang chờ xử lý";
+            case CONFIRMED:
+                return "Đã xác nhận";
+            case SHIPPED:
+                return "Đang giao hàng";
+            case DELIVERED:
+                return "Đã giao hàng";
+            case CANCELLED:
+                return "Đã hủy";
+            default:
+                return "Không xác định";
+        }
+    }
+
+    private String generateRandomTrackingNumber() {
+        Random random = new Random();
+        int randomNumber = random.nextInt(1000000);
+        return "SN-" + String.format("%06d", randomNumber);
     }
 
 }

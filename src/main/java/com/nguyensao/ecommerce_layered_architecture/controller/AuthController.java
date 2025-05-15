@@ -71,17 +71,17 @@ public class AuthController {
 
     @GetMapping(ApiPathConstant.OAUTH2_SUCCESS)
     public ResponseEntity<String> oauth2Success() {
-        return ResponseEntity.ok().body("Đăng nhập OAuth2 thành công!");
+        return ResponseEntity.ok().body(AppMessageConstant.oauth2Success);
     }
 
     @GetMapping(ApiPathConstant.OAUTH2_LINKED_ALREADY)
     public ResponseEntity<String> alreadyLinked() {
-        return ResponseEntity.ok().body("Tài khoản đã được liên kết trước đó!");
+        return ResponseEntity.ok().body(AppMessageConstant.alreadyLinked);
     }
 
     @GetMapping(ApiPathConstant.OAUTH2_LINKED_SUCCESS)
     public ResponseEntity<String> linkedSuccess() {
-        return ResponseEntity.ok().body("Liên kết tài khoản thành công!");
+        return ResponseEntity.ok().body(AppMessageConstant.linkedSuccess);
     }
 
 }

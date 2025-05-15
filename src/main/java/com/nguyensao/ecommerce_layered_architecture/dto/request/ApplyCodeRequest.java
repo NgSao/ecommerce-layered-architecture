@@ -6,5 +6,5 @@ import lombok.Data;
 
 @Data
 public class ApplyCodeRequest {
-    private BigDecimal orderTota;
+    private BigDecimal orderTotal;
 }

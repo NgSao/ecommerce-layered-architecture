@@ -3,6 +3,7 @@ package com.nguyensao.ecommerce_layered_architecture.event.listener;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import com.nguyensao.ecommerce_layered_architecture.constant.RabbitMqConstant;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.InventoryEvent;
 import com.nguyensao.ecommerce_layered_architecture.service.InventoryService;
 import com.nguyensao.ecommerce_layered_architecture.service.NotificationService;
@@ -21,13 +22,10 @@ public class InventoryEventListener {
         this.productService = productService;
     }
 
-    @RabbitListener(queues = "inventory.queue")
+    @RabbitListener(queues = RabbitMqConstant.INVENTORY_QUEUE)
     public void handleInventoryEvent(InventoryEvent event) {
         try {
-            String eventData = String.format("SKU Product: %s, SKU Variant: %s, Quantity: %d",
-                    event.getSkuProduct(), event.getSkuVariant(), event.getQuantity());
 
-            notificationService.saveEvent("InventoryEvent", eventData);
             switch (event.getEventType()) {
                 case CREATE_INVENTORY:
                     inventoryService.createInventory(event);

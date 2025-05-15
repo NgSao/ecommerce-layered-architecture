@@ -1,5 +1,6 @@
 package com.nguyensao.ecommerce_layered_architecture.event.domain;
 
+import com.nguyensao.ecommerce_layered_architecture.enums.NotificationEnum;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 
 import lombok.*;
@@ -13,6 +14,12 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class NotificationEvent {
     EventType eventType;
-    String notification;
-
+    String userId;
+    NotificationEnum type;
+    String title;
+    String message;
+    String data;
+    String flag;
+    String flagData;
+    Long flagId;
 }

@@ -9,6 +9,7 @@ import com.nguyensao.ecommerce_layered_architecture.enums.OrderStatus;
 import com.nguyensao.ecommerce_layered_architecture.model.Order;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserId(String userId);
@@ -33,10 +34,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     long count();
 
-    // @Query("SELECT COUNT(o) FROM Order o WHERE o.orderStatus IN (:status1,
-    // :status2)")
-    // long countByOrderStatusIn(OrderStatus status1, OrderStatus status2);
-
     @Query("SELECT COUNT(o) FROM Order o WHERE o.orderStatus IN (:status1)")
     long countByOrderStatusIn(OrderStatus status1);
+
+    Optional<Order> findByOrderCode(String orderCode);
+
 }

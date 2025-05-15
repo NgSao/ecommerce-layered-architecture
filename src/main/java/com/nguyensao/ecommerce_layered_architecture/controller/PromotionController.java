@@ -40,7 +40,7 @@ public class PromotionController {
         return ResponseEntity.ok().body(promotions);
     }
 
-    @GetMapping("/public/promtions/{id}")
+    @GetMapping("/public/promotions/{id}")
     public ResponseEntity<Optional<UserPromotionDto>> getPromotionById(@PathVariable Long id) {
         return ResponseEntity.ok().body(promotionService.getPromotionByIdForUser(id));
     }

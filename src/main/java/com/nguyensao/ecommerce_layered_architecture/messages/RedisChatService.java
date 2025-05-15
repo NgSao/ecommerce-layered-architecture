@@ -108,7 +108,6 @@ public class RedisChatService {
         String key = MESSAGE_KEY_PREFIX + conversationId;
         List<Object> messages = redisTemplate.opsForList().range(key, 0, -1);
         if (messages != null) {
-            // Find and update the message in the list
             for (int i = 0; i < messages.size(); i++) {
                 Message existing = (Message) messages.get(i);
                 if (existing.getId().equals(message.getId())) {
@@ -118,7 +117,6 @@ public class RedisChatService {
                 }
             }
         }
-        // If not found, append as new
         redisTemplate.opsForList().rightPush(key, message);
         redisTemplate.expire(key, Duration.ofMinutes(60));
     }

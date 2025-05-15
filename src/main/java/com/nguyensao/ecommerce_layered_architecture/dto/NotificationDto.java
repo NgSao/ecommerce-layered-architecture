@@ -8,7 +8,7 @@ import com.nguyensao.ecommerce_layered_architecture.enums.NotificationEnum;
 
 @Data
 public class NotificationDto {
-    private Long userId;
+    private String userId;
     private NotificationEnum type;
     private String title;
     private String message;

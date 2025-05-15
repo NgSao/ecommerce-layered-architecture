@@ -24,14 +24,12 @@ public class CategoryController {
 
     }
 
-    // Category
     @GetMapping(ApiPathConstant.CATEGORY_GET_ALL)
     public ResponseEntity<List<CategoryDto>> getAllCategories() {
         return ResponseEntity.ok().body(categoryService.getAllCategories());
     }
 
-    // Category
-    @GetMapping("/admin/categories")
+    @GetMapping(ApiPathConstant.CATEGORY_GET)
     public ResponseEntity<List<CategoryAdminDto>> getAllAdminCategories() {
         return ResponseEntity.ok().body(categoryService.getAllAdminCategories());
     }

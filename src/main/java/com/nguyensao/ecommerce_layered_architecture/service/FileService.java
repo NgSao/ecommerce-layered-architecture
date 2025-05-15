@@ -15,6 +15,7 @@ import com.nguyensao.ecommerce_layered_architecture.utils.FileValidation;
 
 @Service
 public class FileService {
+
     public String uploadImage(MultipartFile file) throws IOException {
         if (file != null) {
             GitHub github = GitHub.connectUsingOAuth(GithubConstant.GITHUB_TOKEN);
@@ -29,7 +30,7 @@ public class FileService {
             repository.createContent()
                     .content(file.getBytes())
                     .path(imagePath)
-                    .message("Tải ảnh người dùng: " + file.getOriginalFilename())
+                    .message("Tải thành công: " + file.getOriginalFilename())
                     .branch(GithubConstant.BRANCH)
                     .commit();
 
@@ -56,7 +57,6 @@ public class FileService {
         if (imageUrls.isEmpty()) {
             throw new AppException("Không có file hợp lệ được tải lên!");
         }
-
         return imageUrls;
     }
 

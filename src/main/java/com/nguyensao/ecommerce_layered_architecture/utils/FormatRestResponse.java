@@ -28,22 +28,18 @@ public class FormatRestResponse implements ResponseBodyAdvice<Object> {
         int status = servletResponse.getStatus();
         String path = request.getURI().getPath();
 
-        // Bỏ qua Swagger
         if (path.startsWith(ResponseConstant.SWAGGER_DOCS_PATH) || path.startsWith(ResponseConstant.SWAGGER_UI_PATH)) {
             return body;
         }
 
-        // Bỏ qua String và Resource
         if (body instanceof String || body instanceof Resource) {
             return body;
         }
 
-        // Trả về nguyên body nếu là lỗi
         if (status >= 400) {
             return body;
         }
 
-        // Gói dữ liệu thành DataResponse
         DataResponse<Object> restResponse = new DataResponse<>();
         restResponse.setStatus(status);
         restResponse.setData(body);

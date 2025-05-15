@@ -3,12 +3,9 @@ package com.nguyensao.ecommerce_layered_architecture.service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -19,16 +16,17 @@ import com.nguyensao.ecommerce_layered_architecture.dto.request.UpdateOrderStatu
 import com.nguyensao.ecommerce_layered_architecture.dto.response.SimplifiedPageResponse;
 import com.nguyensao.ecommerce_layered_architecture.dto.stats.OrderStatusStatsDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.stats.RevenueStatsDto;
+import com.nguyensao.ecommerce_layered_architecture.enums.NotificationEnum;
 import com.nguyensao.ecommerce_layered_architecture.enums.OrderStatus;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
-import com.nguyensao.ecommerce_layered_architecture.event.domain.OtpEvent;
+import com.nguyensao.ecommerce_layered_architecture.event.domain.NotificationEvent;
+import com.nguyensao.ecommerce_layered_architecture.event.domain.OrderEvent;
 import com.nguyensao.ecommerce_layered_architecture.event.publisher.InventoryPublisher;
-import com.nguyensao.ecommerce_layered_architecture.event.publisher.OtpEventPublisher;
+import com.nguyensao.ecommerce_layered_architecture.event.publisher.NotificationPublisher;
+import com.nguyensao.ecommerce_layered_architecture.event.publisher.OrderEventPublisher;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
+import com.nguyensao.ecommerce_layered_architecture.mapper.OrderMapper;
 import com.nguyensao.ecommerce_layered_architecture.model.Order;
-import com.nguyensao.ecommerce_layered_architecture.model.OrderItem;
-import com.nguyensao.ecommerce_layered_architecture.model.Payment;
-import com.nguyensao.ecommerce_layered_architecture.model.Shipping;
 import com.nguyensao.ecommerce_layered_architecture.model.User;
 import com.nguyensao.ecommerce_layered_architecture.repository.OrderRepository;
 import com.nguyensao.ecommerce_layered_architecture.repository.UserRepository;
@@ -38,99 +36,74 @@ import com.nguyensao.ecommerce_layered_architecture.utils.GenerateOrder;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-
-    private final OtpEventPublisher otpEventPublisher;
-
+    private final OrderEventPublisher orderEventPublisher;
     private final UserRepository userRepository;
-
     private final InventoryPublisher inventoryPublisher;
+    private final NotificationPublisher notificationPublisher;
+    private final OrderMapper orderMapper;
 
-    public OrderService(OrderRepository orderRepository, OtpEventPublisher otpEventPublisher,
-            UserRepository userRepository, InventoryPublisher inventoryPublisher) {
+    public OrderService(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
+            UserRepository userRepository, InventoryPublisher inventoryPublisher,
+            NotificationPublisher notificationPublisher, OrderMapper orderMapper) {
         this.orderRepository = orderRepository;
-        this.otpEventPublisher = otpEventPublisher;
+        this.orderEventPublisher = orderEventPublisher;
         this.userRepository = userRepository;
         this.inventoryPublisher = inventoryPublisher;
+        this.notificationPublisher = notificationPublisher;
+        this.orderMapper = orderMapper;
     }
 
-    public Order createOrder(OrderDto orderDTO) {
-        Order order = new Order();
-        order.setUserId(orderDTO.getUserId());
+    public Order createOrder(OrderDto orderDto) {
+        Order order = orderMapper.orderToEntity(orderDto);
         String generatedCode = GenerateOrder.generateOrderCode();
         order.setOrderCode(generatedCode);
-        Set<OrderItem> orderItems = orderDTO.getItems().stream().map(itemDTO -> {
-            OrderItem item = new OrderItem();
-            item.setProductId(itemDTO.getProductId());
-            item.setColorId(itemDTO.getColorId());
-            item.setName(itemDTO.getName());
-            item.setPrice(itemDTO.getPrice());
-            item.setQuantity(itemDTO.getQuantity());
-            item.setColor(itemDTO.getColor());
-            item.setStorage(itemDTO.getStorage());
-            item.setImageUrl(itemDTO.getImageUrl());
-
-            String skuProduct = String.valueOf(itemDTO.getProductId());
-            String skuVariant = itemDTO.getStorage();
-            int quantity = itemDTO.getQuantity();
+        order.setOrderStatus(OrderStatus.PENDING);
+        order.getItems().forEach(item -> {
+            String skuProduct = String.valueOf(item.getProductId());
+            String skuVariant = item.getStorage();
+            int quantity = item.getQuantity();
             inventoryPublisher.publishInventoryEvent(
                     EventType.ORDER_INVENTORY,
                     skuProduct,
                     skuVariant,
                     quantity);
-
             inventoryPublisher.publishProductEvent(
                     EventType.PRODUCT_INVENTORY,
                     skuProduct,
                     skuVariant,
                     quantity);
+        });
+        orderDto.setOrderCode(generatedCode);
+        Order savedOrder = orderRepository.save(order);
 
-            return item;
-        }).collect(Collectors.toSet());
-
-        order.setItems(orderItems);
-
-        // Map shipping
-        Shipping shipping = new Shipping();
-        shipping.setFullName(orderDTO.getShipping().getFullName());
-        shipping.setPhone(orderDTO.getShipping().getPhone());
-        shipping.setAddressDetail(orderDTO.getShipping().getAddressDetail());
-        shipping.setMethod(orderDTO.getShipping().getMethod());
-        shipping.setFee(orderDTO.getShipping().getFee());
-        order.setShipping(shipping);
-
-        // Map payment
-        Payment payment = new Payment();
-        payment.setMethod(orderDTO.getPayment().getMethod());
-        payment.setStatus(orderDTO.getPayment().getStatus());
-        order.setPayment(payment);
-
-        // Map other fields
-        order.setPromoCode(orderDTO.getPromoCode());
-        order.setDiscount(orderDTO.getDiscount());
-        order.setTotal(orderDTO.getTotal());
-        order.setNote(orderDTO.getNote());
-        order.setOrderStatus(OrderStatus.PENDING);
-        Order savedVed = orderRepository.save(order);
-        orderDTO.setOrderCode(generatedCode);
-
-        User user = userRepository.findById(orderDTO.getUserId()).orElseThrow();
-        OtpEvent otpEvent = OtpEvent.builder()
-                .eventType(EventType.CREATE_ORDER)
-                .fullName(user.getFullName())
+        User user = userRepository.findById(orderDto.getUserId())
+                .orElseThrow(() -> new AppException("User not found"));
+        OrderEvent orderEvent = OrderEvent.builder()
+                .eventType(EventType.KAFKA_ORDER)
                 .email(user.getEmail())
-                .otp(null)
-                .orderDto(orderDTO)
+                .orderCode(savedOrder.getOrderCode())
+                .orderStatus(savedOrder.getOrderStatus())
+                .orderDto(orderDto)
                 .build();
-        otpEventPublisher.publishOtpEvent(otpEvent);
+        orderEventPublisher.publishOrderEvent(orderEvent);
 
-        return savedVed;
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .eventType(EventType.ORDER_NOTIFICATION)
+                .userId(orderDto.getUserId())
+                .type(NotificationEnum.ORDER)
+                .flag("PENDING")
+                .data(generatedCode)
+                .flagId(savedOrder.getId())
+                .build();
+        notificationPublisher.sendNotification(notificationEvent);
 
+        return savedOrder;
     }
 
-    public Order createOrderFromVNPay(OrderDto orderDTO, String vnpayTransactionId) {
-        Order order = createOrder(orderDTO);
-        order.getPayment().setStatus("Đã thanh toán"); // Cập nhật trạng thái thanh toán
-        order.setOrderStatus(OrderStatus.PENDING); // Xác nhận đơn hàng
+    public Order createOrderFromVNPay(OrderDto orderDto, String vnpayTransactionId) {
+        Order order = createOrder(orderDto);
+        order.getPayment().setStatus("Đã thanh toán");
+        order.setOrderStatus(OrderStatus.PENDING);
         return orderRepository.save(order);
     }
 
@@ -157,11 +130,32 @@ public class OrderService {
         }
         order.setOrderStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .eventType(EventType.ORDER_NOTIFICATION)
+                .userId(order.getUserId())
+                .type(NotificationEnum.ORDER)
+                .flag("CANCELLED")
+                .flagData("CUSTOMER")
+                .data(order.getOrderCode())
+                .flagId(order.getId())
+                .build();
+        notificationPublisher.sendNotification(notificationEvent);
+
+        OrderDto orderDto = orderMapper.orderToDto(order);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException("User not found"));
+
+        OrderEvent orderEvent = OrderEvent.builder()
+                .eventType(EventType.KAFKA_ORDER)
+                .email(user.getEmail())
+                .orderCode(order.getOrderCode())
+                .orderStatus(order.getOrderStatus())
+                .orderDto(orderDto)
+                .flag(false)
+                .build();
+        orderEventPublisher.publishOrderEvent(orderEvent);
     }
 
-    // public List<Order> getAllOrders() {
-    // return orderRepository.findAllByOrderByIdDesc();
-    // }
     public SimplifiedPageResponse<Order> getAllOrders(Pageable pageable) {
         Page<Order> orderPage = orderRepository.findAllByOrderByIdDesc(pageable);
         return new SimplifiedPageResponse<>(orderPage);
@@ -175,7 +169,34 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException("Order not found"));
         order.setOrderStatus(request.getStatus());
-        return orderRepository.save(order);
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .eventType(EventType.ORDER_NOTIFICATION)
+                .userId(order.getUserId())
+                .type(NotificationEnum.ORDER)
+                .flag(request.getStatus().name())
+                .flagId(order.getId())
+                .data(order.getOrderCode())
+                .build();
+        notificationPublisher.sendNotification(notificationEvent);
+
+        Order savedOrder = orderRepository.save(order);
+        OrderDto orderDto = orderMapper.orderToDto(savedOrder);
+
+        User user = userRepository.findById(savedOrder.getUserId())
+                .orElseThrow(() -> new AppException("User not found"));
+
+        OrderEvent orderEvent = OrderEvent.builder()
+                .eventType(EventType.KAFKA_ORDER)
+                .email(user.getEmail())
+                .orderCode(order.getOrderCode())
+                .orderStatus(order.getOrderStatus())
+                .orderDto(orderDto)
+                .flag(true)
+                .build();
+        orderEventPublisher.publishOrderEvent(orderEvent);
+
+        return savedOrder;
     }
 
     public OrderStatusStatsDto getOrderStatusStats() {
@@ -196,29 +217,29 @@ public class OrderService {
     }
 
     public RevenueStatsDto getRevenueStats(int year) {
-        // Định nghĩa nhãn cho 12 tháng
         String[] labels = { "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12" };
-        long[] data = new long[12]; // Khởi tạo mảng với 12 tháng, giá trị mặc định là 0
+        long[] data = new long[12];
 
-        // Truy vấn doanh thu theo tháng
         List<Object[]> revenueData = orderRepository.findRevenueByMonth(OrderStatus.DELIVERED, year);
 
-        // Điền dữ liệu vào mảng data
         for (Object[] row : revenueData) {
-            int month = ((Number) row[0]).intValue(); // MONTH(o.createdAt)
-            long totalRevenue = ((Number) row[1]).longValue(); // SUM(o.total)
-            data[month - 1] = totalRevenue; // MONTH bắt đầu từ 1, mảng bắt đầu từ 0
+            int month = ((Number) row[0]).intValue();
+            long totalRevenue = ((Number) row[1]).longValue();
+            data[month - 1] = totalRevenue;
         }
 
-        // Tạo Dataset
         RevenueStatsDto.Dataset dataset = new RevenueStatsDto.Dataset();
         dataset.setData(data);
 
-        // Tạo DTO
         RevenueStatsDto statsDto = new RevenueStatsDto();
         statsDto.setLabels(labels);
         statsDto.setDatasets(Arrays.asList(dataset));
 
         return statsDto;
+    }
+
+    public Order findByOrderCodeId(String orderId) {
+        return orderRepository.findByOrderCode(orderId)
+                .orElseThrow(() -> new AppException("Order not found"));
     }
 }

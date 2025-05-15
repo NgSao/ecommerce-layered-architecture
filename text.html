@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test GHN API</title>
+</head>
+
+<body>
+    <h2>Danh sách tỉnh/thành từ GHN</h2>
+    <ul id="province-list"></ul>
+
+    <script>
+        // API URL và Token
+        const url = "https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/province";
+        const token = "4b6fa134-2fe4-11f0-a3f3-46738741c39b";
+
+        // Gửi GET request đến API GHN
+        fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Token": token
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const provinceList = document.getElementById("province-list");
+
+                // Kiểm tra và hiển thị kết quả
+                if (data.code === 200 && data.data) {
+                    data.data.forEach(province => {
+                        const li = document.createElement("li");
+                        li.textContent = province.ProvinceName;
+                        provinceList.appendChild(li);
+                    });
+                } else {
+                    provinceList.innerHTML = `<li>Lỗi: ${data.message || 'Không lấy được dữ liệu'}</li>`;
+                }
+            })
+            .catch(error => {
+                console.error("Lỗi khi gọi API:", error);
+            });
+    </script>
+</body>
+
+</html>

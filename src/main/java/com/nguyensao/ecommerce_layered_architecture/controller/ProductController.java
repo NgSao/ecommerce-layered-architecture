@@ -38,17 +38,17 @@ public class ProductController {
         return ResponseEntity.ok().body(productService.getAllProducts());
     }
 
-    @GetMapping("/public/products/hot")
+    @GetMapping(ApiPathConstant.PRODUCT_GET_HOT)
     public ResponseEntity<List<ProductResponse>> getAllProductshHot() {
         return ResponseEntity.ok().body(productService.getAllProductsHot());
     }
 
-    @GetMapping("/public/products/sale")
+    @GetMapping(ApiPathConstant.PRODUCT_GET_SALE)
     public ResponseEntity<List<ProductResponse>> getAllProductsSale() {
         return ResponseEntity.ok().body(productService.getSaleProducts());
     }
 
-    @GetMapping("/public/products/colors")
+    @GetMapping(ApiPathConstant.PRODUCT_GET_COLOR)
     public ResponseEntity<SimplifiedPageResponse<ProductColorResponse>> getAllPageProducts(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit) {
@@ -62,21 +62,21 @@ public class ProductController {
         return ResponseEntity.ok().body(productService.getProduct(id));
     }
 
-    @GetMapping("/admin/products/{id}")
-    public ResponseEntity<ProductDto> getProductAdmin(@PathVariable Long id) {
-        return ResponseEntity.ok().body(productService.getProductAdmin(id));
-    }
-
-    @GetMapping("/public/products/search")
+    @GetMapping(ApiPathConstant.PRODUCT_GET_SEARCH)
     public ResponseEntity<List<ProductResponse>> searchProducts(
             @RequestParam(value = "query", required = false) String query) {
         List<ProductResponse> products = productService.searchProducts(query);
         return ResponseEntity.ok().body(products);
     }
 
-    @GetMapping("/public/products/categories/{id}")
+    @GetMapping(ApiPathConstant.PRODUCT_GET_CATEGORY)
     public ResponseEntity<List<ProductResponse>> getProductCategory(@PathVariable Long id) {
         return ResponseEntity.ok().body(productService.getProductsByCategoryId(id));
+    }
+
+    @GetMapping(ApiPathConstant.PRODUCT_GET)
+    public ResponseEntity<ProductDto> getProductAdmin(@PathVariable Long id) {
+        return ResponseEntity.ok().body(productService.getProductAdmin(id));
     }
 
     @PostMapping(ApiPathConstant.PRODUCT_CREATE)

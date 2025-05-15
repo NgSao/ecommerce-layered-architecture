@@ -106,31 +106,6 @@ public class ChatService {
                 .sum();
     }
 
-    // public String uploadImage(String conversationId, String messageId,
-    // MultipartFile image) throws IOException {
-    // if (image == null) {
-    // throw new IllegalArgumentException("Image is required for upload");
-    // }
-
-    // Conversation conversation =
-    // redisChatService.getConversationById(conversationId);
-    // if (conversation == null) {
-    // throw new AppException("Conversation not found");
-    // }
-
-    // Message message = conversation.getMessages().stream()
-    // .filter(msg -> msg.getId().equals(messageId))
-    // .findFirst()
-    // .orElseThrow(() -> new AppException("Message not found"));
-
-    // String imageUrl = fileService.uploadImage(image);
-    // message.setImage(imageUrl);
-
-    // redisChatService.saveUpLoadMessage(conversationId, message);
-
-    // return imageUrl;
-    // }
-
     public String uploadImage(MultipartFile image) throws IOException {
         if (image == null) {
             throw new IllegalArgumentException("Image is required for upload");

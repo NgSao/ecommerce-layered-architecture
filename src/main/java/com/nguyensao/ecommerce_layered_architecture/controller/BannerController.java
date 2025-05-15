@@ -4,8 +4,6 @@ import com.nguyensao.ecommerce_layered_architecture.constant.ApiPathConstant;
 import com.nguyensao.ecommerce_layered_architecture.dto.BannerDto;
 import com.nguyensao.ecommerce_layered_architecture.dto.request.BannerRequest;
 import com.nguyensao.ecommerce_layered_architecture.service.BannerService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,42 +13,41 @@ import java.util.List;
 
 @RestController
 @RequestMapping(ApiPathConstant.API_PREFIX)
-@RequiredArgsConstructor
 public class BannerController {
 
     private final BannerService bannerService;
 
-    @PostMapping("/admin/banners/create")
+    public BannerController(BannerService bannerService) {
+        this.bannerService = bannerService;
+    }
+
+    @PostMapping(ApiPathConstant.BANNER_CREATE)
     public ResponseEntity<BannerDto> createBanner(@RequestBody BannerRequest request) {
-        BannerDto bannerDto = bannerService.createBanner(request);
-        return new ResponseEntity<>(bannerDto, HttpStatus.CREATED);
+        return ResponseEntity.ok().body(bannerService.createBanner(request));
     }
 
-    @PutMapping("/admin/banners/updated/{id}")
+    @PutMapping(ApiPathConstant.BANNER_UPDATED)
     public ResponseEntity<BannerDto> updateBanner(@PathVariable Long id, @RequestBody BannerRequest request) {
-        BannerDto bannerDto = bannerService.updateBanner(id, request);
-        return ResponseEntity.ok(bannerDto);
+        return ResponseEntity.ok().body(bannerService.updateBanner(id, request));
     }
 
-    @DeleteMapping("/admin/banners/delete/{id}")
+    @DeleteMapping(ApiPathConstant.BANNER_DELETE)
     public ResponseEntity<Void> deleteBanner(@PathVariable Long id) {
         bannerService.deleteBanner(id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/public/banners")
+    @GetMapping(ApiPathConstant.BANNER_GET_ALL)
     public ResponseEntity<List<BannerDto>> getAllBanners() {
-        List<BannerDto> banners = bannerService.getAllBanners();
-        return ResponseEntity.ok(banners);
+        return ResponseEntity.ok().body(bannerService.getAllBanners());
     }
 
-    @GetMapping("/public/banners/{id}")
+    @GetMapping(ApiPathConstant.BANNER_GET_ID)
     public ResponseEntity<BannerDto> getBannerById(@PathVariable Long id) {
-        BannerDto bannerDto = bannerService.getBannerById(id);
-        return ResponseEntity.ok(bannerDto);
+        return ResponseEntity.ok().body(bannerService.getBannerById(id));
     }
 
-    @PostMapping(value = "/admin/upload/banners/{id}", consumes = "multipart/form-data")
+    @PostMapping(value = ApiPathConstant.FILE_UPLOAD_BANNER, consumes = "multipart/form-data")
     public BannerDto uploadImage(
             @PathVariable Long id, @RequestParam("file") MultipartFile image) throws IOException {
         return bannerService.uploadImage(id, image);

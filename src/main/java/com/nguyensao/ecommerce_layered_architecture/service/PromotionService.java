@@ -91,7 +91,7 @@ public class PromotionService {
                 .filter(p -> p.isActive() &&
                         p.getEndDate().isAfter(OffsetDateTime.now()) &&
                         p.getUsageCount() < p.getUsageLimit() &&
-                        request.getOrderTota().compareTo(p.getMinOrderValue()) >= 0)
+                        request.getOrderTotal().compareTo(p.getMinOrderValue()) >= 0)
                 .map(this::toUserDTO);
     }
 

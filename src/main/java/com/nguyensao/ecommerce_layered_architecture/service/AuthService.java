@@ -34,6 +34,8 @@ import com.nguyensao.ecommerce_layered_architecture.utils.GeneratePassword;
 import com.nguyensao.ecommerce_layered_architecture.utils.JwtUtil;
 import com.nguyensao.ecommerce_layered_architecture.utils.PasswordValidator;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -249,6 +251,7 @@ public class AuthService {
     }
 
     @Scheduled(fixedRate = 180000)
+    @Transactional
     public void deleteExpiredOtps() {
         Instant now = Instant.now();
         otpRepository.deleteAllByExpiresAtBefore(now);

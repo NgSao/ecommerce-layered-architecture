@@ -23,6 +23,7 @@ import com.nguyensao.ecommerce_layered_architecture.dto.response.ProductResponse
 import com.nguyensao.ecommerce_layered_architecture.dto.response.SimplifiedPageResponse;
 import com.nguyensao.ecommerce_layered_architecture.event.EventType;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.InventoryEvent;
+import com.nguyensao.ecommerce_layered_architecture.event.domain.ProductEvent;
 import com.nguyensao.ecommerce_layered_architecture.event.publisher.InventoryPublisher;
 import com.nguyensao.ecommerce_layered_architecture.exception.AppException;
 import com.nguyensao.ecommerce_layered_architecture.mapper.ProductAdminMapper;
@@ -314,6 +315,29 @@ public class ProductService {
         }
         System.out.println(">>11");
 
+    }
+
+    @Transactional
+    public void updatedRating(ProductEvent event) {
+        Product product = productRepository.findById(event.getProductId())
+                .orElseThrow(() -> new AppException("Sản phẩm không tồn tại"));
+
+        // Tính tổng điểm hiện tại
+        float totalRating = product.getRating() * product.getRatingCount();
+
+        // Tăng số lượng đánh giá
+        int newRatingCount = product.getRatingCount() + 1;
+
+        // Cộng thêm đánh giá mới
+        float newTotalRating = totalRating + event.getFlagProduct();
+
+        // Tính lại trung bình
+        float newAverageRating = newTotalRating / newRatingCount;
+
+        product.setRating(newAverageRating);
+        product.setRatingCount(newRatingCount);
+
+        productRepository.save(product);
     }
 
 }

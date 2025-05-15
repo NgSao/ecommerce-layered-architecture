@@ -22,4 +22,9 @@ public class AppMessageConstant {
     public static final String deleteAddress = "Cập nhật mật khẩu thành công ";
     public static final String changeAddressStatus = "Thay đổi trạng thái thành công";
 
+    // Oauth
+    public static final String oauth2Success = "Đăng nhập OAuth2 thành công!";
+    public static final String alreadyLinked = "Tài khoản đã được liên kết trước đó!";
+    public static final String linkedSuccess = "Liên kết tài khoản thành công!";
+
 }

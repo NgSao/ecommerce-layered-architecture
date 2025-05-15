@@ -3,7 +3,7 @@ package com.nguyensao.ecommerce_layered_architecture.event.publisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import com.nguyensao.ecommerce_layered_architecture.constant.EventConstant;
+import com.nguyensao.ecommerce_layered_architecture.constant.KafkaConstant;
 import com.nguyensao.ecommerce_layered_architecture.event.domain.OtpEvent;
 
 @Component
@@ -16,6 +16,6 @@ public class OtpEventPublisher {
     }
 
     public void publishOtpEvent(OtpEvent event) {
-        kafkaTemplate.send(EventConstant.KAFKA_EVENT, event);
+        kafkaTemplate.send(KafkaConstant.KAFKA_OTP_EVENT, event);
     }
 }
